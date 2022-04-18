@@ -4,6 +4,7 @@ import {
 } from 'react';
 import structuredClone from '@ungap/structured-clone';
 import Box from '@mui/material/Box';
+import Memory from './Memory';
 import Program from './Program';
 import CpuState from './CpuState';
 import StepController from './StepController';
@@ -36,6 +37,7 @@ const Cpu: FC<CpuProps> = (props) => {
 
     return (
         <Box>
+      <Memory />
       <Program 
         instructionPointer={cpuState.instructionPointer}
       />
