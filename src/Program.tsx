@@ -1,7 +1,6 @@
 import { FunctionComponent as FC } from 'react';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
@@ -25,6 +24,7 @@ const codeStyle = {
 };
 
 interface ProgramProps {
+    instructionPointer: number;
 
 }
 
@@ -33,14 +33,15 @@ const Program: FC<ProgramProps> = (props) => {
         <Box>
             <Typography variant="h5" component="div">BPF Source Code</Typography>
             <List sx={style} aria-label="program source">
-                {defaultProgram.map((progLine => {
+                {defaultProgram.map((progLine, i) => {
+                    const addr = i*8;
+                    const active = (props.instructionPointer === addr);
                     return (
-                        <ListItem divider sx={{ padding: 0 }}>
+                        <ListItem selected={active} divider sx={{ padding: 0 }} key={addr}>
                             <Typography component="pre" sx={codeStyle}>{progLine}</Typography>
                         </ListItem>
-                    )
-                }))
-            }
+                    );
+                })}
             </List>
         </Box>
     );
