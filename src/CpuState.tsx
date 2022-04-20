@@ -9,7 +9,6 @@ interface CpuStateProps {
     instructionPointer: number;
     accumulator: number;
     index: number;
-    memory: number[];
 }
 
 const CpuState: FC<CpuStateProps> = (props) => {

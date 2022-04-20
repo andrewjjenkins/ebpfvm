@@ -8,13 +8,9 @@ import ListItem from '@mui/material/ListItem';
 import Typography from '@mui/material/Typography';
 
 interface MemoryProps {
-    initData? : Uint8Array,
+    memory: Uint8Array,
     numWordsToShow?: number,
 }
-
-// FIXME: This should be very large / adjustable.  We should just
-// grab more zero-filled array space when requested.
-const DEFAULT_SIZE = 17;
 
 const DEFAULT_NUM_WORDS_TO_SHOW = 8;
 
@@ -30,22 +26,10 @@ const codeStyle = {
     margin: '1px',
 };
 
-const max = (a: number, b: number) => (a > b) ? a : b;
 const min = (a: number, b: number) => (a < b) ? a : b;
 
 const Memory: FC<MemoryProps> = (props) => {
-    const [mem, setMem] = useState(() => {
-        if (props.initData) {
-            console.error("Unimplemented");
-        }
-        let x = new Uint8Array(DEFAULT_SIZE);
-        const init = 'hello world';
-        for (let i = 0; i < max(x.byteLength, init.length); i++) {
-            x[i] = init.charCodeAt(i);
-        }
-        return x;
-    });
-    const [hotAddress, setHotAddress] = useState(0);
+    const [hotAddress] = useState(0);
     
     // FIXME: hotAddress should probably be rounded to hotWordAddress?
 
@@ -53,19 +37,19 @@ const Memory: FC<MemoryProps> = (props) => {
     const halfNumWords = Math.ceil(numWords / 2);
 
     const showTop = (numWords * 4 > hotAddress);
-    const showBottom = (numWords * 4 + hotAddress > mem.byteLength);
+    const showBottom = (numWords * 4 + hotAddress > props.memory.byteLength);
 
     // FIXME: If we're trying to highlight one of the last words in memory
     // we don't show enough words (we only show "half" the words - those that
     // come before).
     const firstWordAddr = showTop ? 0 : hotAddress - (halfNumWords * 4);
-    const lastWordAddr = min(firstWordAddr + (numWords * 4), mem.byteLength);
+    const lastWordAddr = min(firstWordAddr + (numWords * 4), props.memory.byteLength);
 
     const renderedWord = (addr: number) => {
         let memLine = `0x${addr.toString(16).padStart(8, '0')}: `;
-        const stop = min(addr + 4, mem.byteLength);
+        const stop = min(addr + 4, props.memory.byteLength);
         for (let i = addr; i < stop; i++) {
-            memLine += ` ${mem[i].toString(16).padStart(2, '0')}`;
+            memLine += ` ${props.memory[i].toString(16).padStart(2, '0')}`;
         }
         return (
             <ListItem divider sx={{ padding: 0 }} key={addr}>

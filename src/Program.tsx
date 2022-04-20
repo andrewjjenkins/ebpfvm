@@ -11,6 +11,7 @@ const style = {
     fontFamily: 'Monospace',
 };
 
+// FIXME: should only be in vm/consts.tsx
 const defaultProgram = [
     '     ldh [12]',
     '     jeq #ETHERTYPE_IP, L1, L2',
@@ -25,7 +26,6 @@ const codeStyle = {
 
 interface ProgramProps {
     instructionPointer: number;
-
 }
 
 const Program: FC<ProgramProps> = (props) => {
