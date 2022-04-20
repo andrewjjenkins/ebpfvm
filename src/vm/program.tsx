@@ -1,3 +1,4 @@
+import structuredClone from '@ungap/structured-clone';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -7,10 +8,10 @@ export interface Instruction {
     machineCode: Uint8Array;
 }
 
-export type LabelsToAddress = {[label: string]: number};
+export type Symbols = {[symbol: string]: number};
 
 export class Program {
-    labels: LabelsToAddress;
+    labels: Symbols;
     instructions: Instruction[];
 
     constructor() {
@@ -19,18 +20,9 @@ export class Program {
     }
 
     loadProgramFromAsmSource(asmSource: string[]) {
-        //FIXME: May need to do a run to locate labels.
-
-        asmSource.forEach((asmSourceLine, i) => {
-            const inst: Instruction = {
-                asmSource: asmSourceLine,
-                machineCode: new Uint8Array(8),
-            };
-            // FIXME: Set the machine code.
-            // FIXME: If this instruction is labeled, set it.
-
-            this.instructions.push(inst);
-        });
+        const assembled = assemble(asmSource, {});
+        this.labels = assembled.labels;
+        this.instructions = assembled.instructions;
     }
 }
 
@@ -39,3 +31,65 @@ export const newProgramFromAsmSource = (asmSource: string[]) => {
     program.loadProgramFromAsmSource(asmSource);
     return program;
 }
+
+
+export interface AssembledProgram {
+    labels: Symbols;
+    instructions: Instruction[];
+}
+
+
+interface UnresolvedSymbol {
+    symbol: string;
+    instruction: Instruction;
+}
+
+export const assemble = (
+    asmSource: string[],
+    symbols: Symbols,
+) => {
+    const unresolvedSymbols: UnresolvedSymbol[] = [];
+    const syms = structuredClone(symbols);
+    const labels: Symbols = {};
+    const instructions: Instruction[] = [];
+
+    for (let i = 0; i < asmSource.length; i++) {
+        const asmSourceLine = asmSource[i];
+        const inst: Instruction = {
+            asmSource: asmSourceLine,
+            machineCode: new Uint8Array(8),
+        };
+        const address = i * 8;
+
+        const [noComment] = asmSourceLine.split('//', 1);
+
+        const colonSplits = noComment.split(':', 2);
+        const instructionLabels = (colonSplits.length === 2 ? colonSplits[0] : '').trim();
+        const instructionText = (colonSplits.length === 2 ? colonSplits[1] : colonSplits[0]).trim();
+
+        instructionLabels.split(',').forEach((l: string) => {
+            if (l === "") {
+                return;
+            }
+            const labelNoWhitespace = l.trim();
+            if (labelNoWhitespace in labels) {
+                throw new Error(`Duplicate label ${labelNoWhitespace}`);
+            }
+            labels[labelNoWhitespace] = address;
+        });
+
+        const [opcode, operands] = instructionText.split(' ', 2).map(x => x.trim());
+        console.log(`${address}: ${opcode} ${operands}`);
+
+        // FIXME: Set the machine code.
+        // FIXME: If this instruction is labeled, set it.
+
+        instructions.push(inst);
+    }
+
+    return {
+        symbols: syms,
+        labels,
+        instructions,
+    };
+};
