@@ -78,8 +78,12 @@ export const assemble = (
             labels[labelNoWhitespace] = address;
         });
 
-        const [opcode, operands] = instructionText.split(' ', 2).map(x => x.trim());
-        console.log(`${address}: ${opcode} ${operands}`);
+        const [opcode, allOperands] = instructionText.split(' ', 2).map(x => x.trim().toLowerCase())
+        const operands = allOperands.split(',').map(x => x.trim());
+
+        switch (opcode) {
+
+        }
 
         // FIXME: Set the machine code.
         // FIXME: If this instruction is labeled, set it.
