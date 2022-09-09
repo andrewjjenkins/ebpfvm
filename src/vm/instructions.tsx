@@ -1,18 +1,34 @@
 import * as c from "./consts";
 
-const emitLoad = (operands: string[], allowMem: boolean): c.UnpackedInstruction => {
+const bytesToOpSize = (numBytes: number): c.InstructionOpSize => {
+    switch (numBytes) {
+        case 1:
+            return c.InstructionOpSize.BPF_B;
+        case 2:
+            return c.InstructionOpSize.BPF_H;
+        case 4:
+            return c.InstructionOpSize.BPF_W;
+        default:
+            throw new Error(`invalid size (must be 1, 2 or 4 bytes, got ${numBytes})`);
+    }
+};
+
+const emitLoad = (operands: string[], numBytes: number, allowMem: boolean): c.UnpackedInstruction => {
     if (operands.length != 1) {
         throw new Error(`load expected 1 op, got ${operands.length}`);
     }
     if (operands[0].length < 2) {
         throw new Error(`load invalid op: ${operands[0]}`);
     }
+    const loadSize = bytesToOpSize(numBytes);
+    const loadOpAndSize = c.InstructionClass.BPF_LD | loadSize;
+
     switch (operands[0][0]) {
         case '[':
-            if (operands[0][-1] !== ']') {
+            if (operands[0].slice(-1) !== ']') {
                 throw new Error ('invalid load, missing ]');
             }
-            const val = operands[0].slice(1, operands[0].length - 2);
+            const val = operands[0].slice(1, -1);
             const [lhs, rhs] = val.split('+');
             const offsetString = (rhs !== undefined) ? rhs : lhs;
             const offset = parseInt(offsetString, 0);
@@ -28,7 +44,7 @@ const emitLoad = (operands: string[], allowMem: boolean): c.UnpackedInstruction 
                     throw new Error(`invalid load index ${lhs} (must be x)`);
                 }
                 return {
-                    opcode: c.InstructionClass.BPF_LD | c.InstructionOpMode.BPF_IND,
+                    opcode: loadOpAndSize | c.InstructionOpMode.BPF_IND,
                     destReg: 0x00,
                     sourceReg: c.InstructionSource.BPF_X,
                     offset,
@@ -36,7 +52,7 @@ const emitLoad = (operands: string[], allowMem: boolean): c.UnpackedInstruction 
                 };
             }
             return {
-                opcode: c.InstructionClass.BPF_LD | c.InstructionOpMode.BPF_ABS,
+                opcode: loadOpAndSize | c.InstructionOpMode.BPF_ABS,
                 destReg: 0x00,
                 sourceReg: 0x00,
                 offset,
@@ -51,7 +67,7 @@ const emitLoad = (operands: string[], allowMem: boolean): c.UnpackedInstruction 
 
     // FIXME: don't need once we handle all the cases
     return {
-                opcode: c.InstructionClass.BPF_LD | c.InstructionOpMode.BPF_ABS,
+                opcode: loadOpAndSize | c.InstructionOpMode.BPF_ABS,
                 destReg: 0x00,
                 sourceReg: 0x00,
                 offset: 0,
@@ -59,13 +75,16 @@ const emitLoad = (operands: string[], allowMem: boolean): c.UnpackedInstruction 
     };
 }
 
-class InstructionEncoder {
-    ldb(operands: string[]) {
+type SingleEncoderType = (operands: string[]) => Uint8Array;
+type EncoderType = {[key: string]: SingleEncoderType};
 
-    }
-}
+export const encoder: EncoderType = {
+    ld: (operands: string[]) => pack(emitLoad(operands, 4, false)),
+    ldh: (operands: string[]) => pack(emitLoad(operands, 2, false)),
+    ldb: (operands: string[]) => pack(emitLoad(operands, 1, false)),
+};
 
-const encodeUnpackedInstruction = (u: c.UnpackedInstruction) => {
+export const pack = (u: c.UnpackedInstruction) => {
     const encoded = new Uint8Array(8);
 
     encoded[0] = u.opcode;

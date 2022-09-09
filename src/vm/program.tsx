@@ -1,4 +1,5 @@
 import structuredClone from '@ungap/structured-clone';
+import { encoder } from './instructions';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -81,9 +82,12 @@ export const assemble = (
         const [opcode, allOperands] = instructionText.split(' ', 2).map(x => x.trim().toLowerCase())
         const operands = allOperands.split(',').map(x => x.trim());
 
-        switch (opcode) {
-
+        if (encoder[opcode] === undefined) {
+            throw new Error(`Unknown opcode ${opcode}`);
         }
+        const encoded = encoder[opcode](operands);
+
+        inst.machineCode = encoded;
 
         // FIXME: Set the machine code.
         // FIXME: If this instruction is labeled, set it.
