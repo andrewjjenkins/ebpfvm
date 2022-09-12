@@ -1,7 +1,7 @@
 import { assemble } from '../program';
-import * as c from '../consts';
+import { testParser } from '../parser/parser';
 
-it("assembles", () => {
+xit("assembles", () => {
     const p = assemble(
         ["ldh [12]",],
         {},
