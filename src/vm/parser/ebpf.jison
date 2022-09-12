@@ -30,6 +30,7 @@
 "jgt" return "jgt";
 "jge" return "jge";
 "jset" return "jset";
+"ret" return "ret";
 
 //extensions
 "len" return "len";
@@ -38,6 +39,7 @@
 4\s*\*\s*\(\s*\[ return "fourxopen";
 \]\s*\&\s*0xf\s*\) return "fourxclose";
 [%]?x return "x";
+[%]?a return "a";
 "+" return "+";
 "M" return "M";
 "[" return "[";
@@ -87,6 +89,7 @@ statement
   | jgt_statement { yy.current.opcode = "jgt"; }
   | jge_statement { yy.current.opcode = "jge"; }
   | jset_statement { yy.current.opcode = "jset"; }
+  | ret_statement { yy.current.opcode = "ret"; }
   ;
 
 ld_statement: ld operands_1 | ld operands_2 | ld operands_3
@@ -113,6 +116,8 @@ jge_statement: jge operands_7 | jge operands_8 | jge operands_9
   | jge operands_10;
 jset_statement: jset operands_7 | jset operands_8 | jset operands_9
   | jset operands_10;
+
+ret_statement: ret operands_4 | ret operands_11;
 
 // Numbering from
 // https://www.kernel.org/doc/Documentation/networking/filter.txt
@@ -152,29 +157,33 @@ operands_6: label {
 };
 
 operands_7: immediate "," label "," label {
-    yy.current.mode = yy.OperandsModes.JumpTFImmediate,
+    yy.current.mode = yy.OperandsModes.JumpTFImmediate;
     yy.current.offset = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
     yy.current.false = $5;
 };
 
 operands_8: x "," label "," label {
-    yy.current.mode = yy.OperandsModes.JumpTFRegister,
+    yy.current.mode = yy.OperandsModes.JumpTFRegister;
     yy.current.register = ($1).replace(/^%/,'');
     yy.current.true = $3;
     yy.current.false = $5;
 };
 
 operands_9: immediate "," label {
-    yy.current.mode = yy.OperandsModes.JumpImmediate,
+    yy.current.mode = yy.OperandsModes.JumpImmediate;
     yy.current.offset = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
 };
 
 operands_10: x "," label {
-    yy.current.mode = yy.OperandsModes.JumpRegister,
+    yy.current.mode = yy.OperandsModes.JumpRegister;
     yy.current.register = ($1).replace(/^%/,'');
     yy.current.true = $3;
+};
+
+operands_11: a {
+    yy.current.mode = yy.OperandsModes.Accumulator;
 };
 
 operands_12: extension {

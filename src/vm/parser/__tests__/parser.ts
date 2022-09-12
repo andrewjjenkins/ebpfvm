@@ -272,12 +272,37 @@ it("parses jset (register, T only)", () => expectSingleInstruction(
     },
 ));
 
-xit("parses a small program without symbols", () => {
+it("parses ret (immediate)", () => expectSingleInstruction(
+    "ret #42\n",
+    {
+        opcode: "ret",
+        mode: OperandsModes.Immediate,
+        offset: 42,
+    },
+));
+
+it("parses ret (accumulator)", () => expectSingleInstruction(
+    "ret a\n",
+    {
+        opcode: "ret",
+        mode: OperandsModes.Accumulator,
+    },
+));
+
+it("parses ret (accumulator, with percent)", () => expectSingleInstruction(
+    "ret %a\n",
+    {
+        opcode: "ret",
+        mode: OperandsModes.Accumulator,
+    },
+));
+
+it("parses a small program without labels", () => {
     const instructions = parse(
         "ldh [12]\n" +
-        "jne #0x806, 1\n" +
-        "ret #-1\n" +
-        "drop: ret #0\n"
+        "jne #0x806, drop\n" +
+        "ret #1\n" +
+        "ret #0\n"
     );
     expect(instructions.length).toEqual(4);
 })
