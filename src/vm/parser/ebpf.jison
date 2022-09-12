@@ -46,7 +46,7 @@
 "]" return "]";
 "," return ",";
 ":" return ":";
-\#(0x)?[0-9]+ return "immediate";
+\#[-]?(0x)?[0-9]+ return "immediate";
 (0x)?[0-9]+ return "offset";
 [A-Za-z_]\w* return "label";
 

@@ -347,3 +347,12 @@ it("rejects duplicate labels", () =>
     "drop: ret #1\n"
   )).toThrow()
 );
+
+it("parses negative immediates", () => expectSingleInstruction(
+  "ldi #-12\n",
+  {
+    opcode: "ldi",
+    mode: OperandsModes.Immediate,
+    offset: -12,
+  },
+));
