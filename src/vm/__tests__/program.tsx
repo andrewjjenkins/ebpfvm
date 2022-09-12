@@ -12,10 +12,10 @@ it("assembles", () => {
     expect(inst).toMatchObject({
         asmSource: "ldh [12]",
         machineCode: new Uint8Array([
-            0x28, 0x00,
+            0x00, 0x28,
             0x00,
-            0x0c,
-            0x00, 0x00, 0x00, 0x00,
+            0x00,
+            0x00, 0x00, 0x00, 0x0c,
         ]),
     });
 });
