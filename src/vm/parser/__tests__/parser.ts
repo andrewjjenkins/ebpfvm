@@ -130,3 +130,165 @@ it("parses ldxb with whitespace (fourx mode)", () => expectSingleInstruction(
     },
 ));
 
+it("parses jmp", () => expectSingleInstruction(
+    "jmp foobar\n",
+    {
+        opcode: "jmp",
+        mode: OperandsModes.Label,
+        label: "foobar",
+    },
+));
+
+it("parses ja", () => expectSingleInstruction(
+    "ja foobar\n",
+    {
+        opcode: "ja",
+        mode: OperandsModes.Label,
+        label: "foobar",
+    },
+));
+
+it("parses jeq (immediate, T+F)", () => expectSingleInstruction(
+    "jeq #1, foo, bar\n",
+    {
+        opcode: "jeq",
+        mode: OperandsModes.JumpTFImmediate,
+        true: "foo",
+        false: "bar",
+        offset: 1,
+    },
+));
+
+it("parses jeq (register, T+F)", () => expectSingleInstruction(
+    "jeq %x, foo, bar\n",
+    {
+        opcode: "jeq",
+        mode: OperandsModes.JumpTFRegister,
+        true: "foo",
+        false: "bar",
+        register: "x",
+    },
+));
+
+it("parses jeq (immediate, T only)", () => expectSingleInstruction(
+    "jeq #1, foo\n",
+    {
+        opcode: "jeq",
+        mode: OperandsModes.JumpImmediate,
+        true: "foo",
+        offset: 1,
+    },
+));
+
+it("parses jeq (register, T only)", () => expectSingleInstruction(
+    "jeq x, foo\n",
+    {
+        opcode: "jeq",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+it("parses jneq (immediate)", () => expectSingleInstruction(
+    "jneq #0, foo\n",
+    {
+        opcode: "jneq",
+        mode: OperandsModes.JumpImmediate,
+        true: "foo",
+        offset: 0,
+    },
+));
+
+it("parses jneq (register)", () => expectSingleInstruction(
+    "jneq %x, foo\n",
+    {
+        opcode: "jneq",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+it("parses jne (register)", () => expectSingleInstruction(
+    "jne %x, foo\n",
+    {
+        opcode: "jne",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+it("parses jlt (register)", () => expectSingleInstruction(
+    "jlt %x, foo\n",
+    {
+        opcode: "jlt",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+it("parses jle (register)", () => expectSingleInstruction(
+    "jle %x, foo\n",
+    {
+        opcode: "jle",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+it("parses jgt (immediate, T+F)", () => expectSingleInstruction(
+    "jgt #0x42, foo, bar\n",
+    {
+        opcode: "jgt",
+        mode: OperandsModes.JumpTFImmediate,
+        true: "foo",
+        false: "bar",
+        offset: 0x42,
+    },
+));
+
+it("parses jge (register, T+F)", () => expectSingleInstruction(
+    "jge x, foo, bar\n",
+    {
+        opcode: "jge",
+        mode: OperandsModes.JumpTFRegister,
+        true: "foo",
+        false: "bar",
+        register: "x",
+    },
+));
+
+it("parses jset (register, T only)", () => expectSingleInstruction(
+    "jset x, foo\n",
+    {
+        opcode: "jset",
+        mode: OperandsModes.JumpRegister,
+        true: "foo",
+        register: "x",
+    },
+));
+
+xit("parses a small program without symbols", () => {
+    const instructions = parse(
+        "ldh [12]\n" +
+        "jne #0x806, 1\n" +
+        "ret #-1\n" +
+        "drop: ret #0\n"
+    );
+    expect(instructions.length).toEqual(4);
+})
+
+xit("parses a small program", () => {
+    const instructions = parse(
+        "ldh [12]\n" +
+        "jne #0x806, drop\n" +
+        "ret #-1\n" +
+        "drop: ret #0\n"
+    );
+    expect(instructions.length).toEqual(4);
+})
+
