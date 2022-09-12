@@ -10,17 +10,30 @@
 [\n]+ return "NL";
 \s+   /* skip whitespace */
 \/\/[^\n]* return "comment"  /* skip comments */
+<<EOF>> return "EOF";
 
-"ldh" return "ldh";
+// opcodes
 "ld" return "ld";
-"[" return "[";
-"]" return "]";
+"ldi" return "ldi";
+"ldh" return "ldh";
+"ldb" return "ldb";
+"ldx" return "ldx";
+"ldxi" return "ldxi";
+"ldxb" return "ldxb";
+
+//extensions
+"len" return "len";
+
+// operands
+4\s*\*\s*\(\s*\[ return "fourxopen";
+\]\s*\&\s*0xf\s*\) return "fourxclose";
 [%]?x return "x";
 "+" return "+";
 "M" return "M";
+"[" return "[";
+"]" return "]";
 \#(0x)?[0-9]+ return "immediate";
 (0x)?[0-9]+ return "offset";
-<<EOF>> return "EOF";
 
 /lex
 
@@ -45,18 +58,33 @@ statement_line: statement NL {
 };
 
 statement
-  : ldh operands_1 { yy.current.opcode = "ldh"; }
-  | ldh operands_2 { yy.current.opcode = "ldh"; }
-  | ldb operands_1 { yy.current.opcode = "ldb"; }
-  | ldb operands_2 { yy.current.opcode = "ldb"; }
-  | ld operands_1 { yy.current.opcode = "ld"; }
-  | ld operands_2 { yy.current.opcode = "ld"; }
-  | ld operands_3 { yy.current.opcode = "ld"; }
-  | ld operands_4 { yy.current.opcode = "ld"; }
-  // 12
-  | ldi operands_4 { yy.current.opcode = "ldi"; }
+  : ld_statement { yy.current.opcode = "ld"; }
+  | ldi_statement { yy.current.opcode = "ldi"; }
+  | ldh_statement { yy.current.opcode = "ldh"; }
+  | ldb_statement { yy.current.opcode = "ldb"; }
+  | ldx_statement { yy.current.opcode = "ldx"; }
+  | ldxi_statement { yy.current.opcode = "ldxi"; }
+  | ldxb_statement { yy.current.opcode = "ldxb"; }
   ;
 
+ld_statement: ld operands_1 | ld operands_2 | ld operands_3
+  | ld operands_4 | ld operands_12;
+
+ldi_statement: ldi operands_4;
+
+ldh_statement: ldh operands_1 | ldh operands_2;
+
+ldb_statement: ldb operands_1 | ldb operands_2;
+
+ldx_statement: ldx operands_3 | ldx operands_4 | ldx operands_5
+  | ldx operands_12;
+
+ldxi_statement: ldxi operands_4;
+
+ldxb_statement: ldxb operands_5;
+
+// Numbering from
+// https://www.kernel.org/doc/Documentation/networking/filter.txt
 operands_0: x {
     yy.current.mode = yy.OperandsModes.Register;
 };
@@ -74,10 +102,22 @@ operands_2: "[" x "+" offset "]" {
 
 operands_3: "M" "[" offset "]" {
     yy.current.mode = yy.OperandsModes.Memory;
-    yy.current.offset = parseInt($4);
+    yy.current.offset = parseInt($3);
 };
 
 operands_4: immediate {
     yy.current.mode = yy.OperandsModes.Immediate;
-    yy.current.offset = parseInt($1);
+    yy.current.offset = parseInt(($1).replace(/^\#/,''));
 };
+
+operands_5: fourxopen offset fourxclose {
+    yy.current.mode = yy.OperandsModes.FourXPacketNibble;
+    yy.current.offset = parseInt($2);
+};
+
+operands_12: extension {
+    yy.current.mode = yy.OperandsModes.Extension;
+    yy.current.extension = $1;
+};
+
+extension: len;

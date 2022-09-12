@@ -49,6 +49,84 @@ it("ignores comments", () => expectSingleInstruction(
     },
 ));
 
-it("is not overgreedy on comments", () => {
-    expect(() => parse("/ This is not a valid comment")).toThrow();
-})
+it("is not overgreedy on comments", () =>
+  expect(() => parse("/ This is not a valid comment")).toThrow()
+)
+
+it("parses ldb", () => expectSingleInstruction(
+    "ldb [14]\n",
+    {
+        opcode: "ldb",
+        mode: OperandsModes.Packet,
+        offset: 14,
+    },
+));
+
+it("parses ldi", () => expectSingleInstruction(
+    "ldi #0x47\n",
+    {
+        opcode: "ldi",
+        mode: OperandsModes.Immediate,
+        offset: 0x47,
+    },
+));
+
+
+it("parses ld", () => expectSingleInstruction(
+    "ld [14]\n",
+    {
+        opcode: "ld",
+        mode: OperandsModes.Packet,
+        offset: 14,
+    },
+));
+
+it("parses ld (extension)", () => expectSingleInstruction(
+    "ld len\n",
+    {
+        opcode: "ld",
+        mode: OperandsModes.Extension,
+        extension: "len",
+    },
+));
+
+it("parses ldx", () => expectSingleInstruction(
+    "ldx M[40]\n",
+    {
+        opcode: "ldx",
+        mode: OperandsModes.Memory,
+        offset: 40,
+    },
+));
+
+it("parses ldxi", () => expectSingleInstruction(
+    "ldxi #400\n",
+    {
+        opcode: "ldxi",
+        mode: OperandsModes.Immediate,
+        offset: 400,
+    },
+));
+
+it("rejects ldxi with invalid mode", () =>
+  expect(() => parse("ldxi [40]\n")).toThrow()
+);
+
+it("parses ldxb (fourx mode)", () => expectSingleInstruction(
+    "ldxb 4*([32]&0xf)\n",
+    {
+        opcode: "ldxb",
+        mode: OperandsModes.FourXPacketNibble,
+        offset: 32,
+    },
+));
+
+it("parses ldxb with whitespace (fourx mode)", () => expectSingleInstruction(
+    "ldxb 4 * ([32] & 0xf )\n",
+    {
+        opcode: "ldxb",
+        mode: OperandsModes.FourXPacketNibble,
+        offset: 32,
+    },
+));
+
