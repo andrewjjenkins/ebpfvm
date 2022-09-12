@@ -272,6 +272,107 @@ it("parses jset (register, T only)", () => expectSingleInstruction(
     },
 ));
 
+it("parses add", () => expectSingleInstruction(
+    "add x\n",
+    {
+        opcode: "add",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses sub", () => expectSingleInstruction(
+    "sub #14\n",
+    {
+        opcode: "sub",
+        mode: OperandsModes.Immediate,
+        offset: 14,
+    },
+));
+
+it("parses mul", () => expectSingleInstruction(
+    "mul #14\n",
+    {
+        opcode: "mul",
+        mode: OperandsModes.Immediate,
+        offset: 14,
+    },
+));
+
+it("parses div", () => expectSingleInstruction(
+    "div x\n",
+    {
+        opcode: "div",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses mod", () => expectSingleInstruction(
+    "mod x\n",
+    {
+        opcode: "mod",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses neg", () => expectSingleInstruction(
+    "neg\n",
+    {
+        opcode: "neg",
+    },
+));
+
+it("rejects neg with an argument", () =>
+  expect(() => parse("neg x\n")).toThrow()
+);
+
+it("parses and", () => expectSingleInstruction(
+    "and x\n",
+    {
+        opcode: "and",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses or", () => expectSingleInstruction(
+    "or x\n",
+    {
+        opcode: "or",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses xor", () => expectSingleInstruction(
+    "xor x\n",
+    {
+        opcode: "xor",
+        mode: OperandsModes.Register,
+        register: "x",
+    },
+));
+
+it("parses lsh", () => expectSingleInstruction(
+    "lsh #4\n",
+    {
+        opcode: "lsh",
+        mode: OperandsModes.Immediate,
+        offset: 4,
+    },
+));
+
+it("parses rsh", () => expectSingleInstruction(
+    "rsh #3\n",
+    {
+        opcode: "rsh",
+        mode: OperandsModes.Immediate,
+        offset: 3,
+    },
+));
+
 it("parses ret (immediate)", () => expectSingleInstruction(
     "ret #42\n",
     {

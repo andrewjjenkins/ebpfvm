@@ -30,6 +30,17 @@
 "jgt" return "jgt";
 "jge" return "jge";
 "jset" return "jset";
+"add" return "add";
+"sub" return "sub";
+"mul" return "mul";
+"div" return "div";
+"mod" return "mod";
+"neg" return "neg";
+"and" return "and";
+"or" return "or";
+"xor" return "xor";
+"lsh" return "lsh";
+"rsh" return "rsh";
 "ret" return "ret";
 
 //extensions
@@ -98,6 +109,17 @@ statement
   | jgt_statement { yy.current.opcode = "jgt"; }
   | jge_statement { yy.current.opcode = "jge"; }
   | jset_statement { yy.current.opcode = "jset"; }
+  | add_statement { yy.current.opcode = "add"; }
+  | sub_statement { yy.current.opcode = "sub"; }
+  | mul_statement { yy.current.opcode = "mul"; }
+  | div_statement { yy.current.opcode = "div"; }
+  | mod_statement { yy.current.opcode = "mod"; }
+  | neg_statement { yy.current.opcode = "neg"; }
+  | and_statement { yy.current.opcode = "and"; }
+  | or_statement { yy.current.opcode = "or"; }
+  | xor_statement { yy.current.opcode = "xor"; }
+  | lsh_statement { yy.current.opcode = "lsh"; }
+  | rsh_statement { yy.current.opcode = "rsh"; }
   | ret_statement { yy.current.opcode = "ret"; }
   ;
 
@@ -126,12 +148,25 @@ jge_statement: jge operands_7 | jge operands_8 | jge operands_9
 jset_statement: jset operands_7 | jset operands_8 | jset operands_9
   | jset operands_10;
 
+add_statement: add operands_0 | add operands_4;
+sub_statement: sub operands_0 | sub operands_4;
+mul_statement: mul operands_0 | mul operands_4;
+div_statement: div operands_0 | div operands_4;
+mod_statement: mod operands_0 | mod operands_4;
+neg_statement: neg;
+and_statement: and operands_0 | and operands_4;
+or_statement: or operands_0 | or operands_4;
+xor_statement: xor operands_0 | xor operands_4;
+lsh_statement: lsh operands_0 | lsh operands_4;
+rsh_statement: rsh operands_0 | rsh operands_4;
+
 ret_statement: ret operands_4 | ret operands_11;
 
 // Numbering from
 // https://www.kernel.org/doc/Documentation/networking/filter.txt
 operands_0: x {
     yy.current.mode = yy.OperandsModes.Register;
+    yy.current.register = ($1).replace(/^%/,'');
 };
 
 operands_1: "[" offset "]" {
