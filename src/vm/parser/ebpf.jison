@@ -45,6 +45,7 @@
 "[" return "[";
 "]" return "]";
 "," return ",";
+":" return ":";
 \#(0x)?[0-9]+ return "immediate";
 (0x)?[0-9]+ return "offset";
 [A-Za-z_]\w* return "label";
@@ -62,9 +63,17 @@ program
   }
   ;
 
-line: comment NL | statement_line;
+line: comment_line | labeled_statement_line | statement_line;
 
 comment_line: comment NL;
+
+labeled_statement_line: label ":" statement_line {
+    const l = $1;
+    if (l in yy.labels) {
+        throw new Error("Label " + l + " redefined");
+    }
+    yy.labels[l] = yy.currentLine;
+};
 
 statement_line: statement NL {
     yy.instructions.push(yy.current);

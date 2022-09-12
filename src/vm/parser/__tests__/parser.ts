@@ -2,9 +2,9 @@ import { OperandsModes } from '../consts';
 import { parse } from '../parser';
 
 const expectSingleInstruction = (prog: string, expectedInstruction) => {
-   const instructions = parse(prog);
-   expect(instructions.length).toEqual(1);
-   expect(instructions[0]).toMatchObject(expectedInstruction);
+   const parsed = parse(prog);
+   expect(parsed.instructions.length).toEqual(1);
+   expect(parsed.instructions[0]).toMatchObject(expectedInstruction);
 }
 
 it("parses", () => expectSingleInstruction(
@@ -298,22 +298,52 @@ it("parses ret (accumulator, with percent)", () => expectSingleInstruction(
 ));
 
 it("parses a small program without labels", () => {
-    const instructions = parse(
+    const parsed = parse(
         "ldh [12]\n" +
         "jne #0x806, drop\n" +
         "ret #1\n" +
         "ret #0\n"
     );
-    expect(instructions.length).toEqual(4);
-})
+    expect(parsed.instructions.length).toEqual(4);
+});
 
-xit("parses a small program", () => {
-    const instructions = parse(
+it("parses a small program", () => {
+    const parsed = parse(
         "ldh [12]\n" +
         "jne #0x806, drop\n" +
-        "ret #-1\n" +
+        "ret #1\n" +
         "drop: ret #0\n"
     );
-    expect(instructions.length).toEqual(4);
-})
+    expect(parsed.labels).toMatchObject({
+        "drop": 4
+    })
+    expect(parsed.instructions.length).toEqual(4);
+    expect(parsed.instructions).toMatchObject([
+        {
+            opcode: "ldh",
+            mode: OperandsModes.Packet,
+            offset: 12,
+        }, {
+            opcode: "jne",
+            mode: OperandsModes.JumpImmediate,
+            offset: 0x806,
+            true: "drop",
+        }, {
+            opcode: "ret",
+            mode: OperandsModes.Immediate,
+            offset: 1,
+        }, {
+            opcode: "ret",
+            mode: OperandsModes.Immediate,
+            offset: 0,
+        },
+    ]);
+});
 
+it("rejects duplicate labels", () =>
+  expect(() => parse(
+    "ldh [12]\n" +
+    "drop: ret #0\n" +
+    "drop: ret #1\n"
+  )).toThrow()
+);
