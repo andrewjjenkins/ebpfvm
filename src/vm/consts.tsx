@@ -1,10 +1,19 @@
 export const DEFAULT_MEMORY_INIT = "hello world";
 export const DEFAULT_MEMORY_MIN_SIZE = 128;
 
+/* FIXME: Use this one once symbols are supported.
 export const DEFAULT_PROGRAM = [
     '     ldh [12]',
     '     jeq #ETHERTYPE_IP, L1, L2',
     'L1:  ret #TRUE',
+    'L2:  ret #0',
+];
+*/
+
+export const DEFAULT_PROGRAM = [
+    '     ldh [12]',
+    '     jeq #0x806, L1, L2',
+    'L1:  ret #-1',
     'L2:  ret #0',
 ];
 

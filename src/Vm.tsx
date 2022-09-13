@@ -32,6 +32,9 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     };
 
+    const instructionIndex = vmState.cpu.instructionPointer / 8;
+    const currentInstruction = vmState.program.instructions[instructionIndex];
+
     return (
         <Box>
             <Memory 
@@ -41,6 +44,7 @@ const Vm: FC<VmProps> = (props) => {
                 instructionPointer={vmState.cpu.instructionPointer}
             />
             <CpuState 
+                instruction={currentInstruction}
                 instructionPointer={vmState.cpu.instructionPointer}
                 accumulator={vmState.cpu.accumulator}
                 index={vmState.cpu.index}
