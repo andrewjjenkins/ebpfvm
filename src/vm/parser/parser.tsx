@@ -9,7 +9,6 @@ export interface ParsedInstruction {
     register?: string;
     true?: string;
     false?: string;
-    label?: string;
     extension?: string;
 }
 

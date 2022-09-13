@@ -128,3 +128,137 @@ it("assembles stx", assemblesSingle(
     new Uint8Array([0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10]),
 ));
 
+const assemblesJump = (instruction: string, expectedEncoded: Uint8Array) => {
+    return () => {
+        const p = assemble([
+            instruction,
+            "ld #42",
+            "bar: ret #-1",
+            "foo: ret #0",
+        ], {});
+
+        expect(p.instructions.length).toBe(4);
+        expect(p.instructions[0]).toMatchObject({
+            asmSource: instruction,
+            machineCode: expectedEncoded,
+        });
+    };
+};
+
+it("assembles jmp", assemblesJump(
+    "jmp foo",
+    new Uint8Array([0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02]),
+));
+
+it("assembles ja", assemblesJump(
+    "ja foo",
+    new Uint8Array([0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02]),
+));
+
+it("assembles jeq (true only)", assemblesJump(
+    "jeq #42, foo",
+    new Uint8Array([0x00, 0x15, 0x02, 0x00, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jeq (true/false)", assemblesJump(
+    "jeq #42, foo, bar",
+    new Uint8Array([0x00, 0x15, 0x02, 0x01, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jne", assemblesJump(
+    "jne #42, foo",
+    new Uint8Array([0x00, 0x15, 0x00, 0x02, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jneq", assemblesJump(
+    "jneq #42, foo",
+    new Uint8Array([0x00, 0x15, 0x00, 0x02, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+const rejectsJump = (instruction: string) => {
+    return () => {
+        expect(() => {
+            const p = assemble([
+                instruction,
+                "ld #42",
+                "bar: ret #-1",
+                "foo: ret #0",
+            ], {});
+        }).toThrow();
+    };
+};
+
+it("rejects jneq (true/false)", rejectsJump("jneq #42, foo, bar"));
+
+it("assembles jlt", assemblesJump(
+    "jlt #42, foo",
+    new Uint8Array([0x00, 0x35, 0x00, 0x02, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("rejects jlt (true/false)", rejectsJump("jlt #42, foo, bar"));
+
+it("assembles jle", assemblesJump(
+    "jle #42, foo",
+    new Uint8Array([0x00, 0x25, 0x00, 0x02, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jgt (true only)", assemblesJump(
+    "jgt #42, foo",
+    new Uint8Array([0x00, 0x25, 0x02, 0x00, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jgt (true/false)", assemblesJump(
+    "jgt #42, foo, bar",
+    new Uint8Array([0x00, 0x25, 0x02, 0x01, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jgt (X, true/false)", assemblesJump(
+    "jgt %x, foo, bar",
+    new Uint8Array([0x00, 0x2d, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00]),
+));
+
+it("assembles jge", assemblesJump(
+    "jge #42, foo, bar",
+    new Uint8Array([0x00, 0x35, 0x02, 0x01, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles jset", assemblesJump(
+    "jset #42, bar",
+    new Uint8Array([0x00, 0x45, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2a]),
+));
+
+it("assembles example program", () => {
+    const p = assemble([
+        "ldh [12]",
+        "jne #0x806, drop",
+        "ret #-1",
+        "drop: ret #0",
+    ], {});
+
+    expect(p.labels).toMatchObject({"drop": 3});
+    expect(p.instructions.length).toEqual(4);
+    expect(p.instructions).toMatchObject([
+        {
+            asmSource: "ldh [12]",
+            machineCode: new Uint8Array([
+                0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c,
+            ]),
+        }, {
+            asmSource: "jne #0x806, drop",
+            machineCode: new Uint8Array([
+                0x00, 0x15, 0x00, 0x01, 0x00, 0x00, 0x08, 0x06,
+            ]),
+        }, {
+            asmSource: "ret #-1",
+            machineCode: new Uint8Array([
+                0x00, 0x06, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
+            ]),
+        }, {
+            asmSource: "drop: ret #0",
+            machineCode: new Uint8Array([
+                0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ]),
+        },
+    ]);
+});
+

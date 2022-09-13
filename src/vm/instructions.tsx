@@ -1,6 +1,6 @@
 import * as c from "./consts";
 import { OperandsModes } from "./parser/consts";
-import { ParsedInstruction } from "./parser/parser";
+import { ResolvedInstruction } from "./symbols";
 
 const bytesToOpSize = (numBytes: number): c.InstructionOpSize => {
     switch (numBytes) {
@@ -34,12 +34,18 @@ const modeToOpMode = (m: OperandsModes): c.InstructionOpMode => {
 
 const modeToSource = (m: OperandsModes): c.InstructionSource => {
     switch (m) {
-        case OperandsModes.Immediate:
         case OperandsModes.Packet:
         case OperandsModes.Memory:
+        case OperandsModes.Immediate:
         case OperandsModes.FourXPacketNibble:
+        case OperandsModes.Label:
+        case OperandsModes.JumpImmediate:
+        case OperandsModes.JumpTFImmediate:
+        case OperandsModes.Extension:
             return c.InstructionSource.BPF_K;
         case OperandsModes.PacketOffset:
+        case OperandsModes.JumpRegister:
+        case OperandsModes.JumpTFRegister:
             return c.InstructionSource.BPF_X;
         case OperandsModes.Accumulator:
             return c.InstructionSource.BPF_A;
@@ -48,7 +54,7 @@ const modeToSource = (m: OperandsModes): c.InstructionSource => {
     }
 }
 
-const emitLoadBase = (i: ParsedInstruction, numBytes: number, loadClass: c.InstructionClass): c.UnpackedInstruction => {
+const emitLoadBase = (i: ResolvedInstruction, numBytes: number, loadClass: c.InstructionClass): c.UnpackedInstruction => {
     const loadSize = bytesToOpSize(numBytes);
     const encodedOpmode = modeToOpMode(i.mode);
     const encodedSource = modeToSource(i.mode);
@@ -89,12 +95,15 @@ const emitLoadBase = (i: ParsedInstruction, numBytes: number, loadClass: c.Instr
     }
 };
 
-const emitLoad = (i: ParsedInstruction, numBytes: number) =>
+const emitLoad = (i: ResolvedInstruction, numBytes: number) =>
     emitLoadBase(i, numBytes, c.InstructionClass.BPF_LD);
-const emitLoadx = (i: ParsedInstruction, numBytes: number) =>
+const emitLoadx = (i: ResolvedInstruction, numBytes: number) =>
     emitLoadBase(i, numBytes, c.InstructionClass.BPF_LDX);
 
-const emitStoreBase = (i: ParsedInstruction, storeClass: c.InstructionClass) => {
+const emitStoreBase = (i: ResolvedInstruction, storeClass: c.InstructionClass) => {
+    if (i.k === undefined) {
+        throw new Error(`store: missing target`);
+    }
     return {
         opcode: storeClass,
         jt: 0,
@@ -103,12 +112,104 @@ const emitStoreBase = (i: ParsedInstruction, storeClass: c.InstructionClass) => 
     }
 };
 
-const emitStore = (i: ParsedInstruction) =>
+const emitStore = (i: ResolvedInstruction) =>
     emitStoreBase(i, c.InstructionClass.BPF_ST);
-const emitStorex = (i: ParsedInstruction) =>
+const emitStorex = (i: ResolvedInstruction) =>
     emitStoreBase(i, c.InstructionClass.BPF_STX);
 
-const emitRet = (i: ParsedInstruction): c.UnpackedInstruction => {
+const emitJumpBase = (i: ResolvedInstruction, jumpType: c.InstructionJumps) => {
+    const encodedSource = modeToSource(i.mode);
+    const opcode = c.InstructionClass.BPF_JMP | jumpType | encodedSource;
+
+    switch (i.mode) {
+        case OperandsModes.Label:
+            if (i.true === undefined) {
+                throw new Error(`jump: no target`);
+            }
+            return {
+                opcode,
+                jt: 0,
+                jf: 0,
+                k: i.true
+            };
+
+        case OperandsModes.JumpTFRegister:
+            if (i.register !== "x") {
+                throw new Error(`jump: unknown register ${i.register}`);
+            }
+            if (i.true === undefined || i.false == undefined) {
+                throw new Error(`jump: missing target`);
+            }
+            return {
+                opcode,
+                jt: i.true,
+                jf: i.false,
+                k: 0,
+            };
+
+        case OperandsModes.JumpTFImmediate:
+            if (i.k === undefined) {
+                throw new Error(`jump: missing comparand`);
+            }
+            if (i.true === undefined || i.false == undefined) {
+                throw new Error(`jump: missing target`);
+            }
+            return {
+                opcode,
+                jt: i.true,
+                jf: i.false,
+                k: i.k,
+            };
+
+        case OperandsModes.JumpRegister:
+            if (i.register !== "x") {
+                throw new Error(`jump: unknown register ${i.register}`);
+            }
+            if (i.true === undefined) {
+                throw new Error(`jump: missing target`);
+            }
+            return {
+                opcode,
+                jt: i.true,
+                jf: 0,
+                k: 0,
+            };
+
+        case OperandsModes.JumpImmediate:
+            if (i.k === undefined) {
+                throw new Error(`jump: missing comparand`);
+            }
+            if (i.true === undefined) {
+                throw new Error(`jump: missing target`);
+            }
+            return {
+                opcode,
+                jt: i.true,
+                jf: 0,
+                k: i.k,
+            };
+
+        default:
+            throw new Error(`jump: unimplemented`);
+    }
+};
+
+// Mnemonics like "jne" are just "jeq" with true/false swapped.
+const swapTF = (i: c.UnpackedInstruction) => {
+    return {
+        ...i,
+        jt: i.jf,
+        jf: i.jt,
+    };
+};
+
+const emitJump = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JA);
+const emitJeq = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JEQ);
+const emitJgt = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JGT);
+const emitJge = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JGE);
+const emitJset = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JSET);
+
+const emitRet = (i: ResolvedInstruction): c.UnpackedInstruction => {
     const source = modeToSource(i.mode);
     const opcode = c.InstructionClass.BPF_RET | source;
 
@@ -137,20 +238,30 @@ const emitRet = (i: ParsedInstruction): c.UnpackedInstruction => {
     }
 };
 
-type SingleEncoderType = (i: ParsedInstruction) => Uint8Array;
+type SingleEncoderType = (i: ResolvedInstruction) => Uint8Array;
 type EncoderType = {[key: string]: SingleEncoderType};
 
 export const encoder: EncoderType = {
-    ld: (i: ParsedInstruction) => pack(emitLoad(i, 4)),
-    ldh: (i: ParsedInstruction) => pack(emitLoad(i, 2)),
-    ldb: (i: ParsedInstruction) => pack(emitLoad(i, 1)),
-    ldi: (i: ParsedInstruction) => pack(emitLoad(i, 4)),
-    ldx: (i: ParsedInstruction) => pack(emitLoadx(i, 4)),
-    ldxi: (i: ParsedInstruction) => pack(emitLoadx(i, 4)),
-    ldxb: (i: ParsedInstruction) => pack(emitLoadx(i, 1)),
-    st: (i: ParsedInstruction) => pack(emitStore(i)),
-    stx: (i: ParsedInstruciton) => pack(emitStorex(i)),
-    ret: (i: ParsedInstruction) => pack(emitRet(i)),
+    ld: (i: ResolvedInstruction) => pack(emitLoad(i, 4)),
+    ldh: (i: ResolvedInstruction) => pack(emitLoad(i, 2)),
+    ldb: (i: ResolvedInstruction) => pack(emitLoad(i, 1)),
+    ldi: (i: ResolvedInstruction) => pack(emitLoad(i, 4)),
+    ldx: (i: ResolvedInstruction) => pack(emitLoadx(i, 4)),
+    ldxi: (i: ResolvedInstruction) => pack(emitLoadx(i, 4)),
+    ldxb: (i: ResolvedInstruction) => pack(emitLoadx(i, 1)),
+    st: (i: ResolvedInstruction) => pack(emitStore(i)),
+    stx: (i: ResolvedInstruction) => pack(emitStorex(i)),
+    jmp: (i: ResolvedInstruction) => pack(emitJump(i)),
+    ja: (i: ResolvedInstruction) => pack(emitJump(i)),
+    jeq: (i: ResolvedInstruction) => pack(emitJeq(i)),
+    jne: (i: ResolvedInstruction) => pack(swapTF(emitJeq(i))),
+    jneq: (i: ResolvedInstruction) => pack(swapTF(emitJeq(i))),
+    jlt: (i: ResolvedInstruction) => pack(swapTF(emitJge(i))),
+    jle: (i: ResolvedInstruction) => pack(swapTF(emitJgt(i))),
+    jgt: (i: ResolvedInstruction) => pack(emitJgt(i)),
+    jge: (i: ResolvedInstruction) => pack(emitJge(i)),
+    jset: (i: ResolvedInstruction) => pack(emitJset(i)),
+    ret: (i: ResolvedInstruction) => pack(emitRet(i)),
 };
 
 

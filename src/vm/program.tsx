@@ -1,6 +1,7 @@
 import structuredClone from '@ungap/structured-clone';
 import { encoder } from './instructions';
 import { parse } from './parser/parser';
+import {resolve} from './symbols';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -41,29 +42,20 @@ export interface AssembledProgram {
 }
 
 
-interface UnresolvedSymbol {
-    symbol: string;
-    instruction: Instruction;
-}
-
-
-
 export const assemble = (
     asmSource: string[],
     symbols: Symbols,
 ) => {
-    const unresolvedSymbols: UnresolvedSymbol[] = [];
-    const syms = structuredClone(symbols);
-    const labels: Symbols = {};
     const instructions: Instruction[] = [];
 
     const parsed = parse(asmSource.join('\n') + '\n');
+    const resolved = resolve(parsed.instructions, parsed.labels, symbols);
 
-    for (let i = 0; i < parsed.instructions.length; i++) {
-        const inst = parsed.instructions[i];
+    for (let i = 0; i < resolved.length; i++) {
+        const inst = resolved[i];
         const assembledInstruction: Instruction = {
-            // FIXME: this is wrong and will not handle comment lines.
-            asmSource: asmSource[i],
+            // line numbers count from 1.
+            asmSource: asmSource[inst.lineNumber - 1],
             machineCode: new Uint8Array(8),
         };
 
@@ -77,8 +69,7 @@ export const assemble = (
     }
 
     return {
-        symbols: syms,
-        labels,
         instructions,
+        labels: parsed.labels,
     };
 };

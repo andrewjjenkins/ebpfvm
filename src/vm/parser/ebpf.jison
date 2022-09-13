@@ -85,7 +85,7 @@ labeled_statement_line: label ":" statement_line {
     if (l in yy.labels) {
         throw new Error("Label " + l + " redefined");
     }
-    yy.labels[l] = yy.currentLine;
+    yy.labels[l] = yy.instructions.length - 1;
 };
 
 statement_line: statement NL {
@@ -205,7 +205,7 @@ operands_5: fourxopen offset fourxclose {
 
 operands_6: label {
     yy.current.mode = yy.OperandsModes.Label;
-    yy.current.label = $1;
+    yy.current.true = $1;
 };
 
 operands_7: immediate "," label "," label {

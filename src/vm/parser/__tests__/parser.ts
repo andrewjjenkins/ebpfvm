@@ -1,7 +1,7 @@
 import { OperandsModes } from '../consts';
-import { parse, ParsedInstruction } from '../parser';
+import { parse } from '../parser';
 
-const expectSingleInstruction = (prog: string, expectedInstruction) => {
+const expectSingleInstruction = (prog: string, expectedInstruction: any) => {
    const parsed = parse(prog);
    expect(parsed.instructions.length).toEqual(1);
    const expected = {
@@ -150,7 +150,7 @@ it("parses jmp", () => expectSingleInstruction(
     {
         opcode: "jmp",
         mode: OperandsModes.Label,
-        label: "foobar",
+        true: "foobar",
     },
 ));
 
@@ -159,7 +159,7 @@ it("parses ja", () => expectSingleInstruction(
     {
         opcode: "ja",
         mode: OperandsModes.Label,
-        label: "foobar",
+        true: "foobar",
     },
 ));
 
@@ -432,7 +432,7 @@ it("parses a small program", () => {
         "drop: ret #0\n"
     );
     expect(parsed.labels).toMatchObject({
-        "drop": 4
+        "drop": 3
     })
     expect(parsed.instructions.length).toEqual(4);
     expect(parsed.instructions).toMatchObject([
