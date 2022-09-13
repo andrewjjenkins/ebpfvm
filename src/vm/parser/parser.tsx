@@ -1,4 +1,4 @@
-import { Parser } from './ebpf';
+import { Parser } from '../../generated/ebpf';
 import { OperandsModes } from './consts';
 
 export interface ParsedInstruction {
