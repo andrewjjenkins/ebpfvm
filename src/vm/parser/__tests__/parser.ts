@@ -1,10 +1,14 @@
 import { OperandsModes } from '../consts';
-import { parse } from '../parser';
+import { parse, ParsedInstruction } from '../parser';
 
 const expectSingleInstruction = (prog: string, expectedInstruction) => {
    const parsed = parse(prog);
    expect(parsed.instructions.length).toEqual(1);
-   expect(parsed.instructions[0]).toMatchObject(expectedInstruction);
+   const expected = {
+    lineNumber: 1,
+    ...expectedInstruction,
+   }
+   expect(parsed.instructions[0]).toMatchObject(expected);
 }
 
 it("parses", () => expectSingleInstruction(
@@ -42,6 +46,7 @@ it("ignores comments", () => expectSingleInstruction(
     "ldh [%x + 0x12]\n"+
     "// This is another comment\n",
     {
+        lineNumber: 2,
         opcode: "ldh",
         mode: OperandsModes.PacketOffset,
         register: "x",
@@ -331,6 +336,7 @@ it("parses neg", () => expectSingleInstruction(
     "neg\n",
     {
         opcode: "neg",
+        mode: OperandsModes.Immediate,
     },
 ));
 

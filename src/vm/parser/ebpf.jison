@@ -89,6 +89,7 @@ labeled_statement_line: label ":" statement_line {
 };
 
 statement_line: statement NL {
+    yy.current.lineNumber = yy.currentLine;
     yy.instructions.push(yy.current);
     yy.current = {};
 };
@@ -160,7 +161,7 @@ sub_statement: sub operands_0 | sub operands_4;
 mul_statement: mul operands_0 | mul operands_4;
 div_statement: div operands_0 | div operands_4;
 mod_statement: mod operands_0 | mod operands_4;
-neg_statement: neg;
+neg_statement: neg operands_none;
 and_statement: and operands_0 | and operands_4;
 or_statement: or operands_0 | or operands_4;
 xor_statement: xor operands_0 | xor operands_4;
@@ -240,6 +241,10 @@ operands_11: a {
 operands_12: extension {
     yy.current.mode = yy.OperandsModes.Extension;
     yy.current.extension = $1;
+};
+
+operands_none: {
+    yy.current.mode = yy.OperandsModes.Immediate;
 };
 
 extension: len;

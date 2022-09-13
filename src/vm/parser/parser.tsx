@@ -4,12 +4,13 @@ import { OperandsModes } from './consts';
 export interface ParsedInstruction {
     mode: OperandsModes;
     opcode: string;
-    offset?: number;
-    immediate?: number;
+    lineNumber: number;
+    k?: number;
     register?: string;
     true?: string;
     false?: string;
     label?: string;
+    extension?: string;
 }
 
 export type ParsedLabels = {[label: string]: number};
