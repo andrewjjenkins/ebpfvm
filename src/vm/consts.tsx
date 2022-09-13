@@ -70,8 +70,7 @@ export const OFFSET_MAX = Math.pow(2, 16) - 1;
 
 export interface UnpackedInstruction {
     opcode: number,
-    destReg: number,
-    sourceReg: number,
-    offset: number,
-    immediate: number,
+    jt: number,
+    jf: number,
+    k: number,
 }

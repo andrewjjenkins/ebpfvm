@@ -1,7 +1,25 @@
 import { Parser } from './ebpf';
 import { OperandsModes } from './consts';
 
-export const parse = (prog: string) => {
+export interface ParsedInstruction {
+    mode: OperandsModes;
+    opcode: string;
+    offset?: number;
+    immediate?: number;
+    register?: string;
+    true?: string;
+    false?: string;
+    label?: string;
+}
+
+export type ParsedLabels = {[label: string]: number};
+
+interface ParseResult {
+    instructions: ParsedInstruction[];
+    labels: ParsedLabels;
+}
+
+export const parse = (prog: string): ParseResult => {
     const p = new Parser();
     p. yy = {
         labels: {},

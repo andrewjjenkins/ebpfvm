@@ -1,5 +1,6 @@
 import structuredClone from '@ungap/structured-clone';
 import { encoder } from './instructions';
+import { parse } from './parser/parser';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -45,6 +46,8 @@ interface UnresolvedSymbol {
     instruction: Instruction;
 }
 
+
+
 export const assemble = (
     asmSource: string[],
     symbols: Symbols,
@@ -54,45 +57,23 @@ export const assemble = (
     const labels: Symbols = {};
     const instructions: Instruction[] = [];
 
-    for (let i = 0; i < asmSource.length; i++) {
-        const asmSourceLine = asmSource[i];
-        const inst: Instruction = {
-            asmSource: asmSourceLine,
+    const parsed = parse(asmSource.join('\n') + '\n');
+
+    for (let i = 0; i < parsed.instructions.length; i++) {
+        const inst = parsed.instructions[i];
+        const assembledInstruction: Instruction = {
+            // FIXME: this is wrong and will not handle comment lines.
+            asmSource: asmSource[i],
             machineCode: new Uint8Array(8),
         };
-        const address = i * 8;
 
-        const [noComment] = asmSourceLine.split('//', 1);
-
-        const colonSplits = noComment.split(':', 2);
-        const instructionLabels = (colonSplits.length === 2 ? colonSplits[0] : '').trim();
-        const instructionText = (colonSplits.length === 2 ? colonSplits[1] : colonSplits[0]).trim();
-
-        instructionLabels.split(',').forEach((l: string) => {
-            if (l === "") {
-                return;
-            }
-            const labelNoWhitespace = l.trim();
-            if (labelNoWhitespace in labels) {
-                throw new Error(`Duplicate label ${labelNoWhitespace}`);
-            }
-            labels[labelNoWhitespace] = address;
-        });
-
-        const [opcode, allOperands] = instructionText.split(' ', 2).map(x => x.trim().toLowerCase())
-        const operands = allOperands.split(',').map(x => x.trim());
-
-        if (encoder[opcode] === undefined) {
-            throw new Error(`Unknown opcode ${opcode}`);
+        if (!(inst.opcode in encoder)) {
+            throw new Error(`Unimplemented opcode ${inst.opcode}`);
         }
-        const encoded = encoder[opcode](operands);
+        const encoded = encoder[inst.opcode](inst);
+        assembledInstruction.machineCode = encoded;
 
-        inst.machineCode = encoded;
-
-        // FIXME: Set the machine code.
-        // FIXME: If this instruction is labeled, set it.
-
-        instructions.push(inst);
+        instructions.push(assembledInstruction);
     }
 
     return {

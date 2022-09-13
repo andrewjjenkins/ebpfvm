@@ -187,7 +187,7 @@ operands_3: "M" "[" offset "]" {
 
 operands_4: immediate {
     yy.current.mode = yy.OperandsModes.Immediate;
-    yy.current.offset = parseInt(($1).replace(/^\#/,''));
+    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
 };
 
 operands_5: fourxopen offset fourxclose {
@@ -202,7 +202,7 @@ operands_6: label {
 
 operands_7: immediate "," label "," label {
     yy.current.mode = yy.OperandsModes.JumpTFImmediate;
-    yy.current.offset = parseInt(($1).replace(/^\#/,''));
+    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
     yy.current.false = $5;
 };
@@ -216,7 +216,7 @@ operands_8: x "," label "," label {
 
 operands_9: immediate "," label {
     yy.current.mode = yy.OperandsModes.JumpImmediate;
-    yy.current.offset = parseInt(($1).replace(/^\#/,''));
+    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
 };
 

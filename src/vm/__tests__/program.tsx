@@ -1,7 +1,6 @@
 import { assemble } from '../program';
-import { testParser } from '../parser/parser';
 
-xit("assembles", () => {
+it("assembles", () => {
     const p = assemble(
         ["ldh [12]",],
         {},

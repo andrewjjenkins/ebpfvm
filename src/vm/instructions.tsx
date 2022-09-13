@@ -1,4 +1,6 @@
 import * as c from "./consts";
+import { OperandsModes } from "./parser/consts";
+import { ParsedInstruction } from "./parser/parser";
 
 const bytesToOpSize = (numBytes: number): c.InstructionOpSize => {
     switch (numBytes) {
@@ -13,160 +15,61 @@ const bytesToOpSize = (numBytes: number): c.InstructionOpSize => {
     }
 };
 
-// These are the addressing modes from
-// https://www.kernel.org/doc/Documentation/networking/filter.txt
-enum OperandsModes {
-    Register, // Mode 0
-    Packet,
-    PacketOffset,
-    Memory,
-    Immediate,
-    FourXPacketNibble,
-    Label,
-    JumpTFImmediate,
-    JumpTFRegister,
-    JumpImmediate,
-    JumpRegister,
-    Accumulator,
-    Extension, // Mode 12
-}
-
-interface OperandsRegister {
-    mode: OperandsModes.Register,
-    register: string,
-}
-interface OperandsPacket {
-    mode: OperandsModes.Packet,
-    offset: number,
-}
-
-interface OperandsPacketOffset {
-    mode: OperandsModes.PacketOffset,
-    offset: number,
-}
-
-interface OperandsMemory {
-    mode: OperandsModes.Memory,
-    offset: number,
-}
-
-interface OperandsImmediate {
-    mode: OperandsModes.Immediate,
-    imm: number,
-}
-
-type ParsedOperands = 
-OperandsRegister | OperandsPacket | OperandsPacketOffset |
-OperandsMemory | OperandsImmediate;
-
-const parseOperands = (operands: string[]): ParsedOperands => {
-    switch (operands[0][0]) {
-        case '[':
-            if (operands[0].slice(-1) !== ']') {
-                throw new Error ('invalid load, missing ]');
-            }
-            const val = operands[0].slice(1, -1);
-            const [lhs, rhs] = val.split('+');
-            const offsetString = (rhs !== undefined) ? rhs : lhs;
-            const offset = parseInt(offsetString, 0);
-            if (isNaN(offset)) {
-                throw new Error(`Could not parse offset ${rhs} as int`);
-            }
-            if (offset < 0 || offset > c.OFFSET_MAX) {
-                throw new Error(`Offset ${offset} too large`);
-            }
-
-            if (rhs !== undefined) {
-                if (lhs.toLowerCase() !== 'x') {
-                    throw new Error(`invalid load index ${lhs} (must be x)`);
-                }
-                return {
-                    mode: OperandsModes.PacketOffset,
-                    offset,
-                };
-            }
-            return {
-                mode: OperandsModes.Packet,
-                offset,
-            };
-
-        case '#':
-        case 'M':
-        case '4':
-        case '%':
+const modeToOpMode = (m: OperandsModes): c.InstructionOpMode => {
+    switch (m) {
+        case OperandsModes.Immediate:
+            return c.InstructionOpMode.BPF_IMM;
+        case OperandsModes.Packet:
+            return c.InstructionOpMode.BPF_ABS;
+        case OperandsModes.PacketOffset:
+            return c.InstructionOpMode.BPF_IND;
+        default:
+            throw new Error(`Unimplemented mode: ${m}`);
     }
-
-
 };
 
-const emitLoad = (operands: string[], numBytes: number, allowMem: boolean): c.UnpackedInstruction => {
-    if (operands.length !== 1) {
-        throw new Error(`load expected 1 op, got ${operands.length}`);
-    }
-    if (operands[0].length < 2) {
-        throw new Error(`load invalid op: ${operands[0]}`);
-    }
+const emitLoad = (i: ParsedInstruction, numBytes: number, allowMem: boolean): c.UnpackedInstruction => {
     const loadSize = bytesToOpSize(numBytes);
-    const loadOpAndSize = c.InstructionClass.BPF_LD | loadSize;
+    const encodedOpmode = modeToOpMode(i.mode);
+    const opcode = c.InstructionClass.BPF_LD | loadSize | encodedOpmode;
 
-    switch (operands[0][0]) {
-        case '[':
-            if (operands[0].slice(-1) !== ']') {
-                throw new Error ('invalid load, missing ]');
-            }
-            const val = operands[0].slice(1, -1);
-            const [lhs, rhs] = val.split('+');
-            const offsetString = (rhs !== undefined) ? rhs : lhs;
-            const offset = parseInt(offsetString, 0);
-            if (isNaN(offset)) {
-                throw new Error(`Could not parse offset ${rhs} as int`);
-            }
-            if (offset < 0 || offset > c.OFFSET_MAX) {
-                throw new Error(`Offset ${offset} too large`);
-            }
-
-            if (rhs !== undefined) {
-                if (lhs.toLowerCase() !== 'x') {
-                    throw new Error(`invalid load index ${lhs} (must be x)`);
-                }
-                return {
-                    opcode: loadOpAndSize | c.InstructionOpMode.BPF_IND,
-                    destReg: 0x00,
-                    sourceReg: c.InstructionSource.BPF_X,
-                    offset,
-                    immediate: 0,
-                };
+    switch (i.mode) {
+        case OperandsModes.Immediate:
+            if (i.immediate === undefined) {
+                throw new Error(`Load: no immediate`);
             }
             return {
-                opcode: loadOpAndSize | c.InstructionOpMode.BPF_ABS,
-                destReg: 0x00,
-                sourceReg: 0x00,
-                offset,
-                immediate: 0,
+                opcode,
+                jt: 0,
+                jf: 0,
+                k: i.immediate,
+            };
+        case OperandsModes.Packet:
+            if (i.offset === undefined) {
+                throw new Error(`Load: no offset`);
+            }
+            return {
+                opcode,
+                jt: 0,
+                jf: 0,
+                k: i.offset,
             }
 
-        case '#':
-        case 'M':
-        case '4':
+        case OperandsModes.Memory:
+        case OperandsModes.PacketOffset:
+        case OperandsModes.Extension:
+        default:
+            throw new Error(`Load: unimplemented`);
     }
-
-    // FIXME: don't need once we handle all the cases
-    return {
-                opcode: loadOpAndSize | c.InstructionOpMode.BPF_ABS,
-                destReg: 0x00,
-                sourceReg: 0x00,
-                offset: 0,
-                immediate: 0,
-    };
 }
 
-type SingleEncoderType = (operands: string[]) => Uint8Array;
+type SingleEncoderType = (i: ParsedInstruction) => Uint8Array;
 type EncoderType = {[key: string]: SingleEncoderType};
 
 export const encoder: EncoderType = {
-    ld: (operands: string[]) => pack(emitLoad(operands, 4, false)),
-    ldh: (operands: string[]) => pack(emitLoad(operands, 2, false)),
-    ldb: (operands: string[]) => pack(emitLoad(operands, 1, false)),
+    ld: (i: ParsedInstruction) => pack(emitLoad(i, 4, false)),
+    ldh: (i: ParsedInstruction) => pack(emitLoad(i, 2, false)),
+    ldb: (i: ParsedInstruction) => pack(emitLoad(i, 1, false)),
 };
 
 
@@ -174,13 +77,13 @@ export const encoder: EncoderType = {
 export const pack = (u: c.UnpackedInstruction) => {
     const encoded = new Uint8Array(8);
 
-    encoded[0] = u.opcode;
-    encoded[1] = ((u.destReg << 4) & 0xf0) | (u.sourceReg & 0x0f);
-    encoded[2] = (u.offset >> 8) & 0xff;
-    encoded[3] = u.offset & 0xff;
-    encoded[4] = (u.immediate >> 24) & 0xff;
-    encoded[5] = (u.immediate >> 16) & 0xff;
-    encoded[6] = (u.immediate >> 8) & 0xff;
-    encoded[7] = u.immediate & 0xff;
+    encoded[0] = (u.opcode >> 8) & 0xff;
+    encoded[1] = u.opcode & 0xff;
+    encoded[2] = u.jt & 0xff;
+    encoded[3] = u.jf & 0xff;
+    encoded[4] = (u.k >> 24) & 0xff;
+    encoded[5] = (u.k >> 16) & 0xff;
+    encoded[6] = (u.k >> 8) & 0xff;
+    encoded[7] = u.k & 0xff;
     return encoded;
 };
