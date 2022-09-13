@@ -20,6 +20,8 @@
 "ldx" return "ldx";
 "ldxi" return "ldxi";
 "ldxb" return "ldxb";
+"st" return "st";
+"stx" return "stx";
 "jmp" return "jmp";
 "ja" return "ja";
 "jeq" return "jeq";
@@ -99,6 +101,8 @@ statement
   | ldx_statement { yy.current.opcode = "ldx"; }
   | ldxi_statement { yy.current.opcode = "ldxi"; }
   | ldxb_statement { yy.current.opcode = "ldxb"; }
+  | st_statement { yy.current.opcode = "st"; }
+  | stx_statement { yy.current.opcode = "stx"; }
   | jmp_statement { yy.current.opcode = "jmp"; }
   | ja_statement { yy.current.opcode = "ja"; }
   | jeq_statement { yy.current.opcode = "jeq"; }
@@ -132,6 +136,9 @@ ldx_statement: ldx operands_3 | ldx operands_4 | ldx operands_5
   | ldx operands_12;
 ldxi_statement: ldxi operands_4;
 ldxb_statement: ldxb operands_5;
+
+st_statement: st operands_3;
+stx_statement: stx operands_3;
 
 jmp_statement: jmp operands_6;
 ja_statement: ja operands_6;
@@ -171,28 +178,28 @@ operands_0: x {
 
 operands_1: "[" offset "]" {
     yy.current.mode = yy.OperandsModes.Packet;
-    yy.current.offset = parseInt($2);
+    yy.current.k = parseInt($2);
 };
 
 operands_2: "[" x "+" offset "]" {
     yy.current.mode = yy.OperandsModes.PacketOffset;
     yy.current.register = ($2).replace(/^%/,'');
-    yy.current.offset = parseInt($4);
+    yy.current.k = parseInt($4);
 };
 
 operands_3: "M" "[" offset "]" {
     yy.current.mode = yy.OperandsModes.Memory;
-    yy.current.offset = parseInt($3);
+    yy.current.k = parseInt($3);
 };
 
 operands_4: immediate {
     yy.current.mode = yy.OperandsModes.Immediate;
-    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
+    yy.current.k = parseInt(($1).replace(/^\#/,''));
 };
 
 operands_5: fourxopen offset fourxclose {
     yy.current.mode = yy.OperandsModes.FourXPacketNibble;
-    yy.current.offset = parseInt($2);
+    yy.current.k = parseInt($2);
 };
 
 operands_6: label {
@@ -202,7 +209,7 @@ operands_6: label {
 
 operands_7: immediate "," label "," label {
     yy.current.mode = yy.OperandsModes.JumpTFImmediate;
-    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
+    yy.current.k = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
     yy.current.false = $5;
 };
@@ -216,7 +223,7 @@ operands_8: x "," label "," label {
 
 operands_9: immediate "," label {
     yy.current.mode = yy.OperandsModes.JumpImmediate;
-    yy.current.immediate = parseInt(($1).replace(/^\#/,''));
+    yy.current.k = parseInt(($1).replace(/^\#/,''));
     yy.current.true = $3;
 };
 

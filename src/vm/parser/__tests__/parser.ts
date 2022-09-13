@@ -13,7 +13,7 @@ it("parses", () => expectSingleInstruction(
         opcode: "ldh",
         mode: OperandsModes.PacketOffset,
         register: "x",
-        offset: 12,
+        k: 12,
     },
 ));
 
@@ -23,7 +23,7 @@ it("parses hex addresses", () => expectSingleInstruction(
     opcode: "ldh",
     mode: OperandsModes.PacketOffset,
     register: "x",
-    offset: 18,
+    k: 18,
   },
 ));
 
@@ -33,7 +33,7 @@ it("parses percent registers", () => expectSingleInstruction(
     opcode: "ldh",
     mode: OperandsModes.PacketOffset,
     register: "x",
-    offset: 18,
+    k: 18,
   },
 ));
 
@@ -45,7 +45,7 @@ it("ignores comments", () => expectSingleInstruction(
         opcode: "ldh",
         mode: OperandsModes.PacketOffset,
         register: "x",
-        offset: 18,
+        k: 18,
     },
 ));
 
@@ -58,7 +58,7 @@ it("parses ldb", () => expectSingleInstruction(
     {
         opcode: "ldb",
         mode: OperandsModes.Packet,
-        offset: 14,
+        k: 14,
     },
 ));
 
@@ -67,7 +67,7 @@ it("parses ldi", () => expectSingleInstruction(
     {
         opcode: "ldi",
         mode: OperandsModes.Immediate,
-        immediate: 0x47,
+        k: 0x47,
     },
 ));
 
@@ -77,7 +77,7 @@ it("parses ld", () => expectSingleInstruction(
     {
         opcode: "ld",
         mode: OperandsModes.Packet,
-        offset: 14,
+        k: 14,
     },
 ));
 
@@ -95,7 +95,7 @@ it("parses ldx", () => expectSingleInstruction(
     {
         opcode: "ldx",
         mode: OperandsModes.Memory,
-        offset: 40,
+        k: 40,
     },
 ));
 
@@ -104,7 +104,7 @@ it("parses ldxi", () => expectSingleInstruction(
     {
         opcode: "ldxi",
         mode: OperandsModes.Immediate,
-        immediate: 400,
+        k: 400,
     },
 ));
 
@@ -117,7 +117,7 @@ it("parses ldxb (fourx mode)", () => expectSingleInstruction(
     {
         opcode: "ldxb",
         mode: OperandsModes.FourXPacketNibble,
-        offset: 32,
+        k: 32,
     },
 ));
 
@@ -126,9 +126,19 @@ it("parses ldxb with whitespace (fourx mode)", () => expectSingleInstruction(
     {
         opcode: "ldxb",
         mode: OperandsModes.FourXPacketNibble,
-        offset: 32,
+        k: 32,
     },
 ));
+
+it("parses st", () => expectSingleInstruction(
+    "st M[0x10]\n",
+    {
+        opcode: "st",
+        mode: OperandsModes.Memory,
+        k: 0x10,
+    },
+));
+
 
 it("parses jmp", () => expectSingleInstruction(
     "jmp foobar\n",
@@ -155,7 +165,7 @@ it("parses jeq (immediate, T+F)", () => expectSingleInstruction(
         mode: OperandsModes.JumpTFImmediate,
         true: "foo",
         false: "bar",
-        immediate: 1,
+        k: 1,
     },
 ));
 
@@ -176,7 +186,7 @@ it("parses jeq (immediate, T only)", () => expectSingleInstruction(
         opcode: "jeq",
         mode: OperandsModes.JumpImmediate,
         true: "foo",
-        immediate: 1,
+        k: 1,
     },
 ));
 
@@ -196,7 +206,7 @@ it("parses jneq (immediate)", () => expectSingleInstruction(
         opcode: "jneq",
         mode: OperandsModes.JumpImmediate,
         true: "foo",
-        immediate: 0,
+        k: 0,
     },
 ));
 
@@ -247,7 +257,7 @@ it("parses jgt (immediate, T+F)", () => expectSingleInstruction(
         mode: OperandsModes.JumpTFImmediate,
         true: "foo",
         false: "bar",
-        immediate: 0x42,
+        k: 0x42,
     },
 ));
 
@@ -286,7 +296,7 @@ it("parses sub", () => expectSingleInstruction(
     {
         opcode: "sub",
         mode: OperandsModes.Immediate,
-        immediate: 14,
+        k: 14,
     },
 ));
 
@@ -295,7 +305,7 @@ it("parses mul", () => expectSingleInstruction(
     {
         opcode: "mul",
         mode: OperandsModes.Immediate,
-        immediate: 14,
+        k: 14,
     },
 ));
 
@@ -360,7 +370,7 @@ it("parses lsh", () => expectSingleInstruction(
     {
         opcode: "lsh",
         mode: OperandsModes.Immediate,
-        immediate: 4,
+        k: 4,
     },
 ));
 
@@ -369,7 +379,7 @@ it("parses rsh", () => expectSingleInstruction(
     {
         opcode: "rsh",
         mode: OperandsModes.Immediate,
-        immediate: 3,
+        k: 3,
     },
 ));
 
@@ -378,7 +388,7 @@ it("parses ret (immediate)", () => expectSingleInstruction(
     {
         opcode: "ret",
         mode: OperandsModes.Immediate,
-        immediate: 42,
+        k: 42,
     },
 ));
 
@@ -423,20 +433,20 @@ it("parses a small program", () => {
         {
             opcode: "ldh",
             mode: OperandsModes.Packet,
-            offset: 12,
+            k: 12,
         }, {
             opcode: "jne",
             mode: OperandsModes.JumpImmediate,
-            immediate: 0x806,
+            k: 0x806,
             true: "drop",
         }, {
             opcode: "ret",
             mode: OperandsModes.Immediate,
-            immediate: 1,
+            k: 1,
         }, {
             opcode: "ret",
             mode: OperandsModes.Immediate,
-            immediate: 0,
+            k: 0,
         },
     ]);
 });
@@ -454,6 +464,6 @@ it("parses negative immediates", () => expectSingleInstruction(
   {
     opcode: "ldi",
     mode: OperandsModes.Immediate,
-    immediate: -12,
+    k: -12,
   },
 ));

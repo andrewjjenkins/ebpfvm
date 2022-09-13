@@ -63,6 +63,7 @@ export enum InstructionJumps {
 export enum InstructionSource {
     BPF_K = 0x00,
     BPF_X = 0x08,
+    BPF_A = 0x10,
 }
 export const BPF_SRC = (x: InstructionSource) => (x & 0x08);
 
