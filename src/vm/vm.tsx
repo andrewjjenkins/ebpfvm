@@ -1,11 +1,12 @@
 import { Cpu } from './cpu';
-import { Memory, newMemoryFromString } from './memory';
+import { Memory } from './memory';
 import { newProgramFromAsmSource, Program } from './program';
 import { Packet } from './packet';
 import { DEFAULT_MEMORY_INIT, DEFAULT_PROGRAM } from './consts';
 
+const UbpfModule = require('./ubpf.js');
 
-class Vm {
+export class Vm {
     cpu: Cpu;
     memory: Memory;
     program: Program;
@@ -20,10 +21,30 @@ class Vm {
 }
 
 export const newVm = () => {
-    const cpu = new Cpu();
-    const memory = newMemoryFromString(DEFAULT_MEMORY_INIT);
-    const program = newProgramFromAsmSource(DEFAULT_PROGRAM);
-    const packet = new Packet();
-    const vm = new Vm(cpu, memory, program, packet);
-    return vm;
+    return UbpfModule({
+        locateFile: (path: string, scriptDirectory: string) => {
+            // This assumes that you have put the .wasm file
+            // directly in the top level of public/
+            return "/" + path;
+        }
+    }).then((mod: EmscriptenModule) => {
+        const vmOffset = (mod as any)._getVmMemory();
+        const vmSize = (mod as any)._getVmMemorySize();
+        const vmHeap = new Uint8Array(mod.HEAP8.buffer, vmOffset, vmSize);
+
+        const cpu = new Cpu();
+
+        const memory = new Memory({
+            buffer: vmHeap,
+            memoryInit: DEFAULT_MEMORY_INIT,
+        });
+        if ((vmSize % 4) !== 0) {
+            console.warn("vmSize is %d, not divisible by 32", vmSize)
+        }
+
+        const program = newProgramFromAsmSource(DEFAULT_PROGRAM);
+        const packet = new Packet();
+        const vm = new Vm(cpu, memory, program, packet);
+        return vm;
+    });
 };
