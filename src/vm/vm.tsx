@@ -29,6 +29,10 @@ export const newVm = () => {
         }
     }).then((mod: EmscriptenModule) => {
         debugger;
+        const vmCreateOk = (mod as any)._ebpfvm_create_vm();
+        if (vmCreateOk != 0) {
+            throw new Error("Failed to create VM");
+        }
         const vmOffset = (mod as any)._getVmMemory();
         const vmSize = (mod as any)._getVmMemorySize();
         const vmHeap = new Uint8Array(mod.HEAP8.buffer, vmOffset, vmSize);
@@ -45,20 +49,29 @@ export const newVm = () => {
 
         const program = newProgramFromAsmSource(DEFAULT_PROGRAM);
         const insts = program.getInstructions();
-        console.assert(vmHeap.byteLength >= insts.byteLength);
+        const allocInsts = (mod as any)._ebpfvm_allocate_instructions(1);
+        if (allocInsts <= 0) {
+            throw new Error("Failed to allocate for VM instructions");
+        }
+        const instsOffset = (mod as any)._ebpfvm_get_instructions();
+        const vmInstructions = new Uint8Array(mod.HEAP8.buffer, instsOffset, allocInsts * 8);
+        //console.assert(vmInstructions.byteLength >= insts.byteLength);
         // for (let i = 0; i < insts.byteLength; i++) {
         //     vmHeap[i] = insts[i];
         // }
         // const x = (mod as any)._ajj_load(insts.byteLength);
-        vmHeap[0] = 0xb7;
-        vmHeap[1] = 0x01;
-        vmHeap[2] = 0x00;
-        vmHeap[3] = 0x00;
-        vmHeap[4] = 0x00;
-        vmHeap[5] = 0x00;
-        vmHeap[6] = 0x00;
-        vmHeap[7] = 0x00;
-        const x = (mod as any)._ajj_load(8);
+        vmInstructions[0] = 0xb7;
+        vmInstructions[1] = 0x01;
+        vmInstructions[2] = 0x00;
+        vmInstructions[3] = 0x00;
+        vmInstructions[4] = 0x00;
+        vmInstructions[5] = 0x00;
+        vmInstructions[6] = 0x00;
+        vmInstructions[7] = 0x00;
+        const isValid = (mod as any)._ebpfvm_validate_instructions();
+        if (isValid != 0) {
+            throw new Error("Failed to validate program");
+        }
 
         const packet = new Packet();
         const vm = new Vm(cpu, memory, program, packet);

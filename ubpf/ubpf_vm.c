@@ -29,8 +29,6 @@
 #define MAX_EXT_FUNCS 64
 
 static bool
-validate(const struct ubpf_vm* vm, const struct ebpf_inst* insts, uint32_t num_insts, char** errmsg);
-static bool
 bounds_check(
     const struct ubpf_vm* vm,
     void* addr,
@@ -792,7 +790,7 @@ ubpf_exec(const struct ubpf_vm* vm, void* mem, size_t mem_len, uint64_t* bpf_ret
     }
 }
 
-static bool
+bool
 validate(const struct ubpf_vm* vm, const struct ebpf_inst* insts, uint32_t num_insts, char** errmsg)
 {
     if (num_insts >= UBPF_MAX_INSTS) {
@@ -1086,7 +1084,7 @@ ubpf_fetch_instruction(const struct ubpf_vm* vm, uint16_t pc)
     // This makes ROP attack more difficult.
     ebpf_encoded_inst encode_inst;
     encode_inst.inst = vm->insts[pc];
-    encode_inst.value ^= (uint64_t)vm->insts;
+    //encode_inst.value ^= (uint64_t)vm->insts;
     encode_inst.value ^= vm->pointer_secret;
     return encode_inst.inst;
 }
@@ -1098,7 +1096,7 @@ ubpf_store_instruction(const struct ubpf_vm* vm, uint16_t pc, struct ebpf_inst i
     // This makes ROP attack more difficult.
     ebpf_encoded_inst encode_inst;
     encode_inst.inst = inst;
-    encode_inst.value ^= (uint64_t)vm->insts;
+    //encode_inst.value ^= (uint64_t)vm->insts;
     encode_inst.value ^= vm->pointer_secret;
     vm->insts[pc] = encode_inst.inst;
 }
