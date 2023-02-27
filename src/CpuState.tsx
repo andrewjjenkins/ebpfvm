@@ -24,7 +24,6 @@ const sliceHex = (x: Uint8Array, start: number, end: number): string => {
 };
 
 const CpuState: FC<CpuStateProps> = (props) => {
-    debugger;
     const opcode = sliceHex(props.instruction.machineCode, 0, 2);
     const jt = sliceHex(props.instruction.machineCode, 2, 3);
     const jf = sliceHex(props.instruction.machineCode, 3, 4);

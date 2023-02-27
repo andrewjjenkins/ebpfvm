@@ -52,7 +52,8 @@ const Vm: FC<VmProps> = (props) => {
             <StepController 
                 onReset={onReset}
                 onStep={onStep}
-                onPlay={() => {console.log('play');}}
+//                onPlay={() => {console.log('play');}}
+                onPlay={() => {vmState.memory.callAdd();}}
             />
         </Box>
     );
