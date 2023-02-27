@@ -1,4 +1,5 @@
 #include <emscripten.h>
+#include "ubpf_int.h"
 #include <stdint.h>
 
 #define VMMEMORY_SIZE 1024
@@ -18,4 +19,17 @@ int EMSCRIPTEN_KEEPALIVE emadd(int start, int n) {
         sum += vmMemory[i];
     }
     return sum;
+}
+
+int EMSCRIPTEN_KEEPALIVE ajj_load(int n) {
+    struct ubpf_vm *vm = ubpf_create();
+    char *errmsg = NULL;
+    int rc = ubpf_load(vm, vmMemory, n, &errmsg);
+    if (errmsg != NULL) {
+        EM_ASM({
+            console.error("Error ubpf_load:", UTF8ToString($0));
+        }, errmsg);
+        // Should free errmsg
+    }
+    return rc;
 }

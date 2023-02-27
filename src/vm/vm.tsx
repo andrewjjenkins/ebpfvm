@@ -28,6 +28,7 @@ export const newVm = () => {
             return "/" + path;
         }
     }).then((mod: EmscriptenModule) => {
+        debugger;
         const vmOffset = (mod as any)._getVmMemory();
         const vmSize = (mod as any)._getVmMemorySize();
         const vmHeap = new Uint8Array(mod.HEAP8.buffer, vmOffset, vmSize);
@@ -43,6 +44,22 @@ export const newVm = () => {
         }
 
         const program = newProgramFromAsmSource(DEFAULT_PROGRAM);
+        const insts = program.getInstructions();
+        console.assert(vmHeap.byteLength >= insts.byteLength);
+        // for (let i = 0; i < insts.byteLength; i++) {
+        //     vmHeap[i] = insts[i];
+        // }
+        // const x = (mod as any)._ajj_load(insts.byteLength);
+        vmHeap[0] = 0xb7;
+        vmHeap[1] = 0x01;
+        vmHeap[2] = 0x00;
+        vmHeap[3] = 0x00;
+        vmHeap[4] = 0x00;
+        vmHeap[5] = 0x00;
+        vmHeap[6] = 0x00;
+        vmHeap[7] = 0x00;
+        const x = (mod as any)._ajj_load(8);
+
         const packet = new Packet();
         const vm = new Vm(cpu, memory, program, packet);
         return vm;

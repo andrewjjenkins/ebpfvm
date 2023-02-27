@@ -27,6 +27,18 @@ export class Program {
         this.labels = assembled.labels;
         this.instructions = assembled.instructions;
     }
+
+    getInstructions() {
+        const numInstructions = this.instructions.length;
+        const instArray = new Uint8Array(8 * numInstructions);
+        for (let i = 0; i < numInstructions; i++) {
+            console.assert(this.instructions[i].machineCode.byteLength === 8);
+            for (let j = 0; j < 8; j++) {
+                instArray[i * 8 + j] = this.instructions[i].machineCode[j];
+            }
+        }
+        return instArray;
+    }
 }
 
 export const newProgramFromAsmSource = (asmSource: string[]) => {
