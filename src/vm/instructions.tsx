@@ -1,281 +1,128 @@
 import * as c from "./consts";
-import { OperandsModes } from "./parser/consts";
-import { ResolvedInstruction } from "./symbols";
 
-const bytesToOpSize = (numBytes: number): c.InstructionOpSize => {
-    switch (numBytes) {
-        case 1:
-            return c.InstructionOpSize.BPF_B;
-        case 2:
-            return c.InstructionOpSize.BPF_H;
-        case 4:
-            return c.InstructionOpSize.BPF_W;
-        default:
-            throw new Error(`invalid size (must be 1, 2 or 4 bytes, got ${numBytes})`);
+const signedOffset = (code: Uint8Array, offset: number) => {
+    const offUnsigned = code[offset] << 8 + code[offset];
+    if (offUnsigned >= 32768) {
+        return - (65536 - offUnsigned)
+    } else {
+        return offUnsigned;
     }
 };
 
-const modeToOpMode = (m: OperandsModes): c.InstructionOpMode => {
-    switch (m) {
-        case OperandsModes.Immediate:
-            return c.InstructionOpMode.BPF_IMM;
-        case OperandsModes.Packet:
-            return c.InstructionOpMode.BPF_ABS;
-        case OperandsModes.PacketOffset:
-            return c.InstructionOpMode.BPF_IND;
-        case OperandsModes.Memory:
-            return c.InstructionOpMode.BPF_MEM;
-        case OperandsModes.FourXPacketNibble:
-            return c.InstructionOpMode.BPF_MSH;
-        default:
-            throw new Error(`Unimplemented mode: ${m}`);
-    }
-};
-
-const modeToSource = (m: OperandsModes): c.InstructionSource => {
-    switch (m) {
-        case OperandsModes.Packet:
-        case OperandsModes.Memory:
-        case OperandsModes.Immediate:
-        case OperandsModes.FourXPacketNibble:
-        case OperandsModes.Label:
-        case OperandsModes.JumpImmediate:
-        case OperandsModes.JumpTFImmediate:
-        case OperandsModes.Extension:
-            return c.InstructionSource.BPF_K;
-        case OperandsModes.PacketOffset:
-        case OperandsModes.JumpRegister:
-        case OperandsModes.JumpTFRegister:
-            return c.InstructionSource.BPF_X;
-        case OperandsModes.Accumulator:
-            return c.InstructionSource.BPF_A;
-        default:
-            throw new Error(`Unimplemented mode: ${m}`);
+const stringifyRelative = (base: string, offset: number) => {
+    if (offset === 0) {
+        return `[${base}]`;
+    } else if (offset > 0) {
+        return `[${base}+${offset}]`;
+    } else {
+        return `[${base}${offset}]`;
     }
 }
 
-const emitLoadBase = (i: ResolvedInstruction, numBytes: number, loadClass: c.InstructionClass): c.UnpackedInstruction => {
-    const loadSize = bytesToOpSize(numBytes);
-    const encodedOpmode = modeToOpMode(i.mode);
-    const encodedSource = modeToSource(i.mode);
-    const opcode = loadClass | loadSize | encodedOpmode |
-        encodedSource;
+export const disassembleInstruction = (code: Uint8Array, offset: number) => {
+    const instClass = c.EBPF_CLASS(code[offset]);
+    const dst_reg = code[offset + 1] & 0xf;
+    const src_reg = (code[offset + 1] >> 4) & 0xf;
+    const off = signedOffset(code, offset + 2);
+    const imm: number = (code[offset + 4] << 0) | (code[offset + 5] << 8) |
+        (code[offset + 6] << 16) | (code[offset + 7] << 24);
 
-    switch (i.mode) {
-        case OperandsModes.Immediate:
-        case OperandsModes.Packet:
-        case OperandsModes.PacketOffset:
-        case OperandsModes.Memory:
-            if (i.k === undefined) {
-                throw new Error(`Load: no k (offset/immediate)`);
-            }
-            return {
-                opcode,
-                jt: 0,
-                jf: 0,
-                k: i.k,
-            };
-        case OperandsModes.FourXPacketNibble:
-            if (i.k === undefined) {
-                throw new Error(`Load: no k (offset)`);
-            }
-            return {
-                // Even if the "ldx" mnemonic is used, this instruction
-                // always has byte size.
-                opcode: opcode | c.InstructionOpSize.BPF_B,
-                jt: 0,
-                jf: 0,
-                k: i.k,
-            }
+    if (instClass === c.InstructionClass.EBPF_CLS_ALU || instClass === c.InstructionClass.EBPF_CLS_ALU64) {
+        const op = c.EBPF_OP(code[offset]);
+        const fullOpName = c.InstructionOp[op];
+        let opName = fullOpName.replace(/^EBPF_/, '').toLowerCase();
+        if (instClass === c.InstructionClass.EBPF_CLS_ALU) {
+            opName += "32";
+        }
+        const source = c.EBPF_SRC(code[offset]);
 
-        case OperandsModes.Extension:
-            throw new Error(`Load: unimplemented mode ${i.mode}`);
-        default:
-            throw new Error(`Load: invalid mode ${i.mode}`);
+        if (op === c.InstructionOp.EBPF_NEG) {
+            return `${opName} r${dst_reg}`;
+        } else if (op === c.InstructionOp.EBPF_ENDIAN) {
+            opName = source === c.InstructionSource.EBPF_SRC_REG ? "be" : "le";
+            return `${opName}${imm} r${dst_reg}`;
+        } else if (source === 0) {
+            return `${opName} r${dst_reg}, %#${imm}`;
+        } else {
+            return `${opName} r${dst_reg}, r${src_reg}`;
+        }
+    } else if (instClass === c.InstructionClass.EBPF_CLS_JMP) {
+        const op = c.EBPF_OP(code[offset]);
+        const fullOpName = c.InstructionJumps[op];
+        let opName = fullOpName.replace(/^EBPF_/, '').toLowerCase();
+        const source = c.EBPF_SRC(code[offset]);
+
+        if (op === c.InstructionJumps.EBPF_EXIT) {
+            return opName;
+        } else if (op === c.InstructionJumps.EBPF_CALL) {
+            return `${opName} ${imm}`;
+        } else if (op === c.InstructionJumps.EBPF_JA) {
+            return `${opName} ${offset}`;
+        } else if (source === 0) {
+            return `${opName} r${dst_reg}, %#${imm}, ${offset}`;
+        } else {
+            return `${opName} r${dst_reg}, r${src_reg}, ${offset}`;
+        }
+    } else if (instClass === c.InstructionClass.EBPF_CLS_JMP32) {
+        throw new Error("EBPF_CLS_JMP32 Unimplemented");
+    } else if ((instClass & 0xfc) === 0x00) {
+        // load or store
+        const fullClassName = c.InstructionClass[instClass];
+        const className = fullClassName.replace(/^EBPF_CLS_/, '').toLowerCase();
+        const size = c.EBPF_SIZE(code[offset]);
+        const fullSizeName = c.InstructionOpSize[size];
+        let sizeStr = fullSizeName.replace(/^EBPF_SIZE_/, '').toLowerCase();
+        const mnem = `${className}${sizeStr}`
+
+        if (instClass === c.InstructionClass.EBPF_CLS_LD && size === c.InstructionOpSize.EBPF_SIZE_DW) {
+            // The next "instruction" is actually 4 bytes of 0 and then
+            // the high bits of the 64-bit immediate.
+            const highImm: number = (code[offset + 12] << 0) | (code[offset + 13] << 8) |
+                (code[offset+14] << 16) | (code[offset + 15] << 24);
+            let bigImm = BigInt(highImm);
+            bigImm <<= BigInt(32);
+            bigImm |= BigInt(imm);
+            return `${mnem} r${dst_reg}, %#${bigImm}`;
+        } else if (code[offset] === 0x00) {
+            // This is the second instruction of a previous lddw
+            return "";
+        } else if (instClass === c.InstructionClass.EBPF_CLS_LDX) {
+            const arg2 = stringifyRelative(`r${src_reg}`, off);
+            return `${mnem} r${dst_reg}, ${arg2}`;
+        } else if (instClass === c.InstructionClass.EBPF_CLS_ST) {
+            const arg1 = stringifyRelative(`r${dst_reg}`, off);
+            return `${mnem} ${arg1}, %#${imm}`;
+        } else if (instClass === c.InstructionClass.EBPF_CLS_STX) {
+            const arg1 = stringifyRelative(`r${dst_reg}`, off);
+            return `${mnem} ${arg1}, r${src_reg}`;
+        } else {
+            throw new Error(`Unknown memory instruction ${code[offset]}`);
+        }
+    } else {
+        throw new Error(`Unknown instruction ${code[offset]}`);
     }
 };
 
-const emitLoad = (i: ResolvedInstruction, numBytes: number) =>
-    emitLoadBase(i, numBytes, c.InstructionClass.BPF_LD);
-const emitLoadx = (i: ResolvedInstruction, numBytes: number) =>
-    emitLoadBase(i, numBytes, c.InstructionClass.BPF_LDX);
+export const disassemble = (code: Uint8Array, offset: number, numInsts: number) => {
+    const decoded: string[] = [];
 
-const emitStoreBase = (i: ResolvedInstruction, storeClass: c.InstructionClass) => {
-    if (i.k === undefined) {
-        throw new Error(`store: missing target`);
+    for (let i = 0; i < numInsts; i++) {
+        decoded.push(disassembleInstruction(code, offset + 8 * i));
     }
-    return {
-        opcode: storeClass,
-        jt: 0,
-        jf: 0,
-        k: i.k,
-    }
+    return decoded;
 };
-
-const emitStore = (i: ResolvedInstruction) =>
-    emitStoreBase(i, c.InstructionClass.BPF_ST);
-const emitStorex = (i: ResolvedInstruction) =>
-    emitStoreBase(i, c.InstructionClass.BPF_STX);
-
-const emitJumpBase = (i: ResolvedInstruction, jumpType: c.InstructionJumps) => {
-    const encodedSource = modeToSource(i.mode);
-    const opcode = c.InstructionClass.BPF_JMP | jumpType | encodedSource;
-
-    switch (i.mode) {
-        case OperandsModes.Label:
-            if (i.true === undefined) {
-                throw new Error(`jump: no target`);
-            }
-            return {
-                opcode,
-                jt: 0,
-                jf: 0,
-                k: i.true
-            };
-
-        case OperandsModes.JumpTFRegister:
-            if (i.register !== "x") {
-                throw new Error(`jump: unknown register ${i.register}`);
-            }
-            if (i.true === undefined || i.false == undefined) {
-                throw new Error(`jump: missing target`);
-            }
-            return {
-                opcode,
-                jt: i.true,
-                jf: i.false,
-                k: 0,
-            };
-
-        case OperandsModes.JumpTFImmediate:
-            if (i.k === undefined) {
-                throw new Error(`jump: missing comparand`);
-            }
-            if (i.true === undefined || i.false == undefined) {
-                throw new Error(`jump: missing target`);
-            }
-            return {
-                opcode,
-                jt: i.true,
-                jf: i.false,
-                k: i.k,
-            };
-
-        case OperandsModes.JumpRegister:
-            if (i.register !== "x") {
-                throw new Error(`jump: unknown register ${i.register}`);
-            }
-            if (i.true === undefined) {
-                throw new Error(`jump: missing target`);
-            }
-            return {
-                opcode,
-                jt: i.true,
-                jf: 0,
-                k: 0,
-            };
-
-        case OperandsModes.JumpImmediate:
-            if (i.k === undefined) {
-                throw new Error(`jump: missing comparand`);
-            }
-            if (i.true === undefined) {
-                throw new Error(`jump: missing target`);
-            }
-            return {
-                opcode,
-                jt: i.true,
-                jf: 0,
-                k: i.k,
-            };
-
-        default:
-            throw new Error(`jump: unimplemented`);
-    }
-};
-
-// Mnemonics like "jne" are just "jeq" with true/false swapped.
-const swapTF = (i: c.UnpackedInstruction) => {
-    return {
-        ...i,
-        jt: i.jf,
-        jf: i.jt,
-    };
-};
-
-const emitJump = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JA);
-const emitJeq = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JEQ);
-const emitJgt = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JGT);
-const emitJge = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JGE);
-const emitJset = (i: ResolvedInstruction) => emitJumpBase(i, c.InstructionJumps.BPF_JSET);
-
-const emitRet = (i: ResolvedInstruction): c.UnpackedInstruction => {
-    const source = modeToSource(i.mode);
-    const opcode = c.InstructionClass.BPF_RET | source;
-
-    switch (i.mode) {
-        case OperandsModes.Immediate:
-            if (i.k === undefined) {
-                throw new Error(`Ret: no immediate`);
-            }
-            return {
-                opcode,
-                jt: 0,
-                jf: 0,
-                k: i.k,
-            };
-
-        case OperandsModes.Accumulator:
-            return {
-                opcode,
-                jt: 0,
-                jf: 0,
-                k: 0,
-            };
-
-        default:
-            throw new Error(`ret: invalid mode ${i.mode}`);
-    }
-};
-
-type SingleEncoderType = (i: ResolvedInstruction) => Uint8Array;
-type EncoderType = {[key: string]: SingleEncoderType};
-
-export const encoder: EncoderType = {
-    ld: (i: ResolvedInstruction) => pack(emitLoad(i, 4)),
-    ldh: (i: ResolvedInstruction) => pack(emitLoad(i, 2)),
-    ldb: (i: ResolvedInstruction) => pack(emitLoad(i, 1)),
-    ldi: (i: ResolvedInstruction) => pack(emitLoad(i, 4)),
-    ldx: (i: ResolvedInstruction) => pack(emitLoadx(i, 4)),
-    ldxi: (i: ResolvedInstruction) => pack(emitLoadx(i, 4)),
-    ldxb: (i: ResolvedInstruction) => pack(emitLoadx(i, 1)),
-    st: (i: ResolvedInstruction) => pack(emitStore(i)),
-    stx: (i: ResolvedInstruction) => pack(emitStorex(i)),
-    jmp: (i: ResolvedInstruction) => pack(emitJump(i)),
-    ja: (i: ResolvedInstruction) => pack(emitJump(i)),
-    jeq: (i: ResolvedInstruction) => pack(emitJeq(i)),
-    jne: (i: ResolvedInstruction) => pack(swapTF(emitJeq(i))),
-    jneq: (i: ResolvedInstruction) => pack(swapTF(emitJeq(i))),
-    jlt: (i: ResolvedInstruction) => pack(swapTF(emitJge(i))),
-    jle: (i: ResolvedInstruction) => pack(swapTF(emitJgt(i))),
-    jgt: (i: ResolvedInstruction) => pack(emitJgt(i)),
-    jge: (i: ResolvedInstruction) => pack(emitJge(i)),
-    jset: (i: ResolvedInstruction) => pack(emitJset(i)),
-    ret: (i: ResolvedInstruction) => pack(emitRet(i)),
-};
-
 
 // FIXME: Assumes big-endian.
 export const pack = (u: c.UnpackedInstruction) => {
     const encoded = new Uint8Array(8);
 
-    encoded[0] = (u.opcode >> 8) & 0xff;
-    encoded[1] = u.opcode & 0xff;
-    encoded[2] = u.jt & 0xff;
-    encoded[3] = u.jf & 0xff;
-    encoded[4] = (u.k >> 24) & 0xff;
-    encoded[5] = (u.k >> 16) & 0xff;
-    encoded[6] = (u.k >> 8) & 0xff;
-    encoded[7] = u.k & 0xff;
+    encoded[0] = u.opcode & 0xff;
+    encoded[1] = ((u.dst & 0x0f) << 4) | (u.src & 0x0f);
+    encoded[2] = (u.offset >> 8) & 0xff;
+    encoded[3] = u.offset & 0xff;
+    encoded[4] = (u.imm >> 24) & 0xff;
+    encoded[5] = (u.imm >> 16) & 0xff;
+    encoded[6] = (u.imm >> 8) & 0xff;
+    encoded[7] = u.imm & 0xff;
     return encoded;
 };

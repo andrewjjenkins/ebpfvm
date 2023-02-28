@@ -49,8 +49,18 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     };
 
-    const instructionIndex = vmState.cpu.instructionPointer / 8;
-    const currentInstruction = vmState.program.instructions[instructionIndex];
+
+    // FIXME
+    // const instructionIndex = vmState.cpu.instructionPointer / 8;
+    //const currentInstruction = vmState.program.instructions[instructionIndex];
+    const machineCode = new Uint8Array(
+        vmState.program.instructions.buffer,
+        vmState.program.instructions.byteOffset + vmState.cpu.instructionPointer,
+        8)
+    const currentInstruction = {
+        asmSource: "# foobar",
+        machineCode: machineCode,
+    };
 
     return (
         <Box>
@@ -59,6 +69,7 @@ const Vm: FC<VmProps> = (props) => {
             />
             <Program 
                 instructionPointer={vmState.cpu.instructionPointer}
+                instructions={vmState.program.instructions}
             />
             <CpuState 
                 instruction={currentInstruction}

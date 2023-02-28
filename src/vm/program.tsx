@@ -1,8 +1,3 @@
-import structuredClone from '@ungap/structured-clone';
-import { encoder } from './instructions';
-import { parse } from './parser/parser';
-import {resolve} from './symbols';
-
 export interface Instruction {
     // The assembly version of this instruction, like:
     // 'fooLabel:   jeq #ETHERTYPE_IP, L1, L2',
@@ -15,19 +10,14 @@ export type Symbols = {[symbol: string]: number};
 
 export class Program {
     labels: Symbols;
-    instructions: Instruction[];
+    instructions: Uint8Array;
 
-    constructor() {
+    constructor(instructions: Uint8Array) {
         this.labels = {};
-        this.instructions = [];
+        this.instructions = instructions;
     }
 
-    loadProgramFromAsmSource(asmSource: string[]) {
-        const assembled = assemble(asmSource, {});
-        this.labels = assembled.labels;
-        this.instructions = assembled.instructions;
-    }
-
+    /*
     getInstructions() {
         const numInstructions = this.instructions.length;
         const instArray = new Uint8Array(8 * numInstructions);
@@ -39,14 +29,8 @@ export class Program {
         }
         return instArray;
     }
+    */
 }
-
-export const newProgramFromAsmSource = (asmSource: string[]) => {
-    const program = new Program();
-    program.loadProgramFromAsmSource(asmSource);
-    return program;
-}
-
 
 export interface AssembledProgram {
     labels: Symbols;
@@ -54,6 +38,22 @@ export interface AssembledProgram {
 }
 
 
+export const loadHexbytecode = (bytecode: string) => {
+    const textNoWs = bytecode.split("\n").join("");
+
+    console.assert(textNoWs.length % 16 === 0);
+
+    const arraySz = Math.floor(textNoWs.length / 2);
+
+    const instructions = new Uint8Array(arraySz);
+    for (let i = 0; i < arraySz; i++) {
+        instructions[i] = parseInt(textNoWs.slice(i * 2, i * 2 + 2), 16);
+    }
+    return instructions;
+
+};
+
+/*
 export const assemble = (
     asmSource: string[],
     symbols: Symbols,
@@ -85,3 +85,4 @@ export const assemble = (
         labels: parsed.labels,
     };
 };
+*/

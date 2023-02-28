@@ -24,9 +24,9 @@ const sliceHex = (x: Uint8Array, start: number, end: number): string => {
 };
 
 const CpuState: FC<CpuStateProps> = (props) => {
-    const opcode = sliceHex(props.instruction.machineCode, 0, 2);
-    const jt = sliceHex(props.instruction.machineCode, 2, 3);
-    const jf = sliceHex(props.instruction.machineCode, 3, 4);
+    const opcode = sliceHex(props.instruction.machineCode, 0, 1);
+    const regs = sliceHex(props.instruction.machineCode, 1, 2);
+    const offset = sliceHex(props.instruction.machineCode, 2, 4);
     const k = sliceHex(props.instruction.machineCode, 4, 8);
 
     return (
@@ -34,7 +34,7 @@ const CpuState: FC<CpuStateProps> = (props) => {
             <Typography variant="h5" component="div">CPU State</Typography>
             <Grid container spacing={2}>
                 <Grid item xs={3}>Instruction:</Grid>
-                <Grid item xs={9}>Opcode: {opcode} JT: {jt} JF: {jf} K: {k}</Grid>
+                <Grid item xs={9}>Opcode: {opcode} Dst/Src: {regs} Offset: {offset} K: {k}</Grid>
                 <Grid item xs={3}>Inst Pointer:</Grid>
                 <Grid item xs={9}>{props.instructionPointer}</Grid>
                 <Grid item xs={3}>Accumulator:</Grid>
