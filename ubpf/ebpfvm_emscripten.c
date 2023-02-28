@@ -23,6 +23,13 @@ int error_printf(FILE* stream, const char *format, ...) {
     return len;
 }
 
+uint64_t ubpf_default_extension_func(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
+    EM_ASM({
+        console.log("ubpf_default_extension_func(%d, %d, %d, %d, %d)", $0, $1, $2, $3, $4);
+    }, a, b, c, d, e);
+    return 0;
+}
+
 #define VMMEMORY_SIZE 1024
 uint8_t vmMemory[VMMEMORY_SIZE];
 
@@ -52,6 +59,13 @@ int EMSCRIPTEN_KEEPALIVE ebpfvm_create_vm() {
         return -1;
     }
 
+    for (unsigned int i = 0; i < 64; i++) {
+        if (ubpf_register(vm, i, "ubpf_default_extension_func", ubpf_default_extension_func) < 0) {
+            error_printf(NULL, "ebpfvm_create_vm(): failed to register extension func %d", i);
+            return -1;
+        }
+    }
+
     ubpf_set_pointer_secret(vm, 0);
     ubpf_set_error_print(vm, error_printf);
     return 0;
@@ -76,7 +90,7 @@ int EMSCRIPTEN_KEEPALIVE ebpfvm_validate_instructions() {
 
     char *errmsg = NULL;
     if (!validate(vm, vm->insts, vm->num_insts, &errmsg)) {
-        error_printf(NULL, "ebpfvm_validate_instructions(): validation %s", errmsg);
+        error_printf(NULL, "ebpfvm_validate_instructions(): %s", errmsg);
         free(errmsg);
         return -1;
     }
