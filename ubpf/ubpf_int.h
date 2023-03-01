@@ -37,9 +37,12 @@ struct ubpf_vm
     int (*translate)(struct ubpf_vm* vm, uint8_t* buffer, size_t* size, char** errmsg);
     int unwind_stack_extension_index;
     uint64_t pointer_secret;
-#ifdef DEBUG
     uint64_t* regs;
-#endif
+    void *mem;
+    int mem_len;
+    void *stack;
+    uint16_t pc;
+    uint64_t return_value;
 };
 
 bool

@@ -172,15 +172,30 @@ ubpf_load_elf(struct ubpf_vm* vm, const void* elf, size_t elf_len, char** errmsg
  * A program must be loaded into the VM and all external functions must be
  * registered before calling this function.
  *
+ * The return value of the executed program is stored in vm->return_value.
+ *
  * @param[in] vm The VM to execute the program in.
- * @param[in] mem The memory to pass to the program.
- * @param[in] mem_len The length of the memory.
- * @param[in] bpf_return_value The value of the r0 register when the program exits.
  * @retval 0 Success.
  * @retval -1 Failure.
  */
 int
-ubpf_exec(const struct ubpf_vm* vm, void* mem, size_t mem_len, uint64_t* bpf_return_value);
+ubpf_exec(struct ubpf_vm* vm);
+
+/**
+ * @brief Execute one instruction of a BPF program in the VM.
+ *
+ * A program must be loaded into the VM and all external functions must be
+ * registered before calling this function.
+ *
+ * The return value of the executed program is stored in vm->return_value.
+ *
+ * @param[in] vm The VM to execute the program in.
+ * @retval 0 Successful program termination.
+ * @retval -1 Failure.
+ * @retval 1 Successful step (call again to execute next instruction).
+ */
+ int
+ ubpf_exec_step(struct ubpf_vm* vm);
 
 /**
  * @brief Compile a BPF program in the VM to native code.

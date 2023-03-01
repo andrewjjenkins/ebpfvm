@@ -27,6 +27,8 @@
 #include <unistd.h>
 
 #define MAX_EXT_FUNCS 64
+#define EBPF_REGISTERS_COUNT 11
+#define EBPF_MEM_BYTES 8 * 128
 
 static bool
 bounds_check(
@@ -87,6 +89,31 @@ ubpf_create(void)
     vm->translate = ubpf_translate_null;
 #endif
     vm->unwind_stack_extension_index = -1;
+
+    vm->regs = calloc(EBPF_REGISTERS_COUNT, sizeof(uint64_t));
+    if (vm->regs == NULL) {
+        ubpf_destroy(vm);
+        return NULL;
+    }
+    vm->stack = calloc((UBPF_STACK_SIZE + 7) / 8, sizeof(uint64_t));
+    if (vm->stack == NULL) {
+        ubpf_destroy(vm);
+        return NULL;
+    }
+    vm->mem = calloc(EBPF_MEM_BYTES, 1);
+    if (vm->mem == NULL) {
+        ubpf_destroy(vm);
+        return NULL;
+    }
+    vm->mem_len = EBPF_MEM_BYTES;
+
+    // Initialize registers
+    vm->regs[1] = (uintptr_t)(vm->mem);
+    vm->regs[2] = (uint64_t)(EBPF_MEM_BYTES);
+    vm->regs[10] = (uintptr_t)(vm->stack + UBPF_STACK_SIZE);
+    vm->pc = 0;
+    vm->return_value = 0;
+
     return vm;
 }
 
@@ -96,6 +123,9 @@ ubpf_destroy(struct ubpf_vm* vm)
     ubpf_unload_code(vm);
     free(vm->ext_funcs);
     free(vm->ext_func_names);
+    free(vm->regs);
+    free(vm->stack);
+    free(vm->mem);
     free(vm);
 }
 
@@ -253,539 +283,537 @@ ubpf_mem_store(uint64_t address, uint64_t value, size_t size)
 }
 
 int
-ubpf_exec(const struct ubpf_vm* vm, void* mem, size_t mem_len, uint64_t* bpf_return_value)
+ubpf_exec_step(struct ubpf_vm* vm)
 {
-    uint16_t pc = 0;
-    const struct ebpf_inst* insts = vm->insts;
-    uint64_t* reg;
-    uint64_t _reg[16];
-    uint64_t stack[(UBPF_STACK_SIZE + 7) / 8];
+    uint64_t *reg = vm->regs;
+    const uint16_t cur_pc = vm->pc;
+    struct ebpf_inst inst = ubpf_fetch_instruction(vm, vm->pc++);
 
-    if (!insts) {
+    switch (inst.opcode) {
+    case EBPF_OP_ADD_IMM:
+        reg[inst.dst] += inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_ADD_REG:
+        reg[inst.dst] += reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_SUB_IMM:
+        reg[inst.dst] -= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_SUB_REG:
+        reg[inst.dst] -= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MUL_IMM:
+        reg[inst.dst] *= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MUL_REG:
+        reg[inst.dst] *= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_DIV_IMM:
+        reg[inst.dst] = u32(inst.imm) ? u32(reg[inst.dst]) / u32(inst.imm) : 0;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_DIV_REG:
+        reg[inst.dst] = reg[inst.src] ? u32(reg[inst.dst]) / u32(reg[inst.src]) : 0;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_OR_IMM:
+        reg[inst.dst] |= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_OR_REG:
+        reg[inst.dst] |= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_AND_IMM:
+        reg[inst.dst] &= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_AND_REG:
+        reg[inst.dst] &= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_LSH_IMM:
+        reg[inst.dst] <<= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_LSH_REG:
+        reg[inst.dst] <<= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_RSH_IMM:
+        reg[inst.dst] = u32(reg[inst.dst]) >> inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_RSH_REG:
+        reg[inst.dst] = u32(reg[inst.dst]) >> reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_NEG:
+        reg[inst.dst] = -(int64_t)reg[inst.dst];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MOD_IMM:
+        reg[inst.dst] = u32(inst.imm) ? u32(reg[inst.dst]) % u32(inst.imm) : u32(reg[inst.dst]);
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MOD_REG:
+        reg[inst.dst] = u32(reg[inst.src]) ? u32(reg[inst.dst]) % u32(reg[inst.src]) : u32(reg[inst.dst]);
+        break;
+    case EBPF_OP_XOR_IMM:
+        reg[inst.dst] ^= inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_XOR_REG:
+        reg[inst.dst] ^= reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MOV_IMM:
+        reg[inst.dst] = inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_MOV_REG:
+        reg[inst.dst] = reg[inst.src];
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_ARSH_IMM:
+        reg[inst.dst] = (int32_t)reg[inst.dst] >> inst.imm;
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+    case EBPF_OP_ARSH_REG:
+        reg[inst.dst] = (int32_t)reg[inst.dst] >> u32(reg[inst.src]);
+        reg[inst.dst] &= UINT32_MAX;
+        break;
+
+    case EBPF_OP_LE:
+        if (inst.imm == 16) {
+            reg[inst.dst] = htole16(reg[inst.dst]);
+        } else if (inst.imm == 32) {
+            reg[inst.dst] = htole32(reg[inst.dst]);
+        } else if (inst.imm == 64) {
+            reg[inst.dst] = htole64(reg[inst.dst]);
+        }
+        break;
+    case EBPF_OP_BE:
+        if (inst.imm == 16) {
+            reg[inst.dst] = htobe16(reg[inst.dst]);
+        } else if (inst.imm == 32) {
+            reg[inst.dst] = htobe32(reg[inst.dst]);
+        } else if (inst.imm == 64) {
+            reg[inst.dst] = htobe64(reg[inst.dst]);
+        }
+        break;
+
+    case EBPF_OP_ADD64_IMM:
+        reg[inst.dst] += inst.imm;
+        break;
+    case EBPF_OP_ADD64_REG:
+        reg[inst.dst] += reg[inst.src];
+        break;
+    case EBPF_OP_SUB64_IMM:
+        reg[inst.dst] -= inst.imm;
+        break;
+    case EBPF_OP_SUB64_REG:
+        reg[inst.dst] -= reg[inst.src];
+        break;
+    case EBPF_OP_MUL64_IMM:
+        reg[inst.dst] *= inst.imm;
+        break;
+    case EBPF_OP_MUL64_REG:
+        reg[inst.dst] *= reg[inst.src];
+        break;
+    case EBPF_OP_DIV64_IMM:
+        reg[inst.dst] = inst.imm ? reg[inst.dst] / inst.imm : 0;
+        break;
+    case EBPF_OP_DIV64_REG:
+        reg[inst.dst] = reg[inst.src] ? reg[inst.dst] / reg[inst.src] : 0;
+        break;
+    case EBPF_OP_OR64_IMM:
+        reg[inst.dst] |= inst.imm;
+        break;
+    case EBPF_OP_OR64_REG:
+        reg[inst.dst] |= reg[inst.src];
+        break;
+    case EBPF_OP_AND64_IMM:
+        reg[inst.dst] &= inst.imm;
+        break;
+    case EBPF_OP_AND64_REG:
+        reg[inst.dst] &= reg[inst.src];
+        break;
+    case EBPF_OP_LSH64_IMM:
+        reg[inst.dst] <<= inst.imm;
+        break;
+    case EBPF_OP_LSH64_REG:
+        reg[inst.dst] <<= reg[inst.src];
+        break;
+    case EBPF_OP_RSH64_IMM:
+        reg[inst.dst] >>= inst.imm;
+        break;
+    case EBPF_OP_RSH64_REG:
+        reg[inst.dst] >>= reg[inst.src];
+        break;
+    case EBPF_OP_NEG64:
+        reg[inst.dst] = -reg[inst.dst];
+        break;
+    case EBPF_OP_MOD64_IMM:
+        reg[inst.dst] = inst.imm ? reg[inst.dst] % inst.imm : reg[inst.dst];
+        break;
+    case EBPF_OP_MOD64_REG:
+        reg[inst.dst] = reg[inst.src] ? reg[inst.dst] % reg[inst.src] : reg[inst.dst];
+        break;
+    case EBPF_OP_XOR64_IMM:
+        reg[inst.dst] ^= inst.imm;
+        break;
+    case EBPF_OP_XOR64_REG:
+        reg[inst.dst] ^= reg[inst.src];
+        break;
+    case EBPF_OP_MOV64_IMM:
+        reg[inst.dst] = inst.imm;
+        break;
+    case EBPF_OP_MOV64_REG:
+        reg[inst.dst] = reg[inst.src];
+        break;
+    case EBPF_OP_ARSH64_IMM:
+        reg[inst.dst] = (int64_t)reg[inst.dst] >> inst.imm;
+        break;
+    case EBPF_OP_ARSH64_REG:
+        reg[inst.dst] = (int64_t)reg[inst.dst] >> reg[inst.src];
+        break;
+
+        /*
+            * HACK runtime bounds check
+            *
+            * Needed since we don't have a verifier yet.
+            */
+#define BOUNDS_CHECK_LOAD(size)                                                                                 \
+do {                                                                                                        \
+    if (!bounds_check(vm, (char*)reg[inst.src] + inst.offset, size, "load", cur_pc, vm->mem, vm->mem_len, vm->stack)) { \
+        return -1;                                                                                          \
+    }                                                                                                       \
+} while (0)
+#define BOUNDS_CHECK_STORE(size)                                                                                 \
+do {                                                                                                         \
+    if (!bounds_check(vm, (char*)reg[inst.dst] + inst.offset, size, "store", cur_pc, vm->mem, vm->mem_len, vm->stack)) { \
+        return -1;                                                                                           \
+    }                                                                                                        \
+} while (0)
+
+    case EBPF_OP_LDXW:
+        BOUNDS_CHECK_LOAD(4);
+        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 4);
+        break;
+    case EBPF_OP_LDXH:
+        BOUNDS_CHECK_LOAD(2);
+        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 2);
+        break;
+    case EBPF_OP_LDXB:
+        BOUNDS_CHECK_LOAD(1);
+        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 1);
+        break;
+    case EBPF_OP_LDXDW:
+        BOUNDS_CHECK_LOAD(8);
+        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 8);
+        break;
+
+    case EBPF_OP_STW:
+        BOUNDS_CHECK_STORE(4);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 4);
+        break;
+    case EBPF_OP_STH:
+        BOUNDS_CHECK_STORE(2);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 2);
+        break;
+    case EBPF_OP_STB:
+        BOUNDS_CHECK_STORE(1);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 1);
+        break;
+    case EBPF_OP_STDW:
+        BOUNDS_CHECK_STORE(8);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 8);
+        break;
+
+    case EBPF_OP_STXW:
+        BOUNDS_CHECK_STORE(4);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 4);
+        break;
+    case EBPF_OP_STXH:
+        BOUNDS_CHECK_STORE(2);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 2);
+        break;
+    case EBPF_OP_STXB:
+        BOUNDS_CHECK_STORE(1);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 1);
+        break;
+    case EBPF_OP_STXDW:
+        BOUNDS_CHECK_STORE(8);
+        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 8);
+        break;
+
+    case EBPF_OP_LDDW:
+        reg[inst.dst] = u32(inst.imm) | ((uint64_t)ubpf_fetch_instruction(vm, vm->pc++).imm << 32);
+        break;
+
+    case EBPF_OP_JA:
+        vm->pc += inst.offset;
+        break;
+    case EBPF_OP_JEQ_IMM:
+        if (reg[inst.dst] == inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JEQ_REG:
+        if (reg[inst.dst] == reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JEQ32_IMM:
+        if (u32(reg[inst.dst]) == u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JEQ32_REG:
+        if (u32(reg[inst.dst]) == reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGT_IMM:
+        if (reg[inst.dst] > u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGT_REG:
+        if (reg[inst.dst] > reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGT32_IMM:
+        if (u32(reg[inst.dst]) > u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGT32_REG:
+        if (u32(reg[inst.dst]) > u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGE_IMM:
+        if (reg[inst.dst] >= u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGE_REG:
+        if (reg[inst.dst] >= reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGE32_IMM:
+        if (u32(reg[inst.dst]) >= u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JGE32_REG:
+        if (u32(reg[inst.dst]) >= u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLT_IMM:
+        if (reg[inst.dst] < u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLT_REG:
+        if (reg[inst.dst] < reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLT32_IMM:
+        if (u32(reg[inst.dst]) < u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLT32_REG:
+        if (u32(reg[inst.dst]) < u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLE_IMM:
+        if (reg[inst.dst] <= u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLE_REG:
+        if (reg[inst.dst] <= reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLE32_IMM:
+        if (u32(reg[inst.dst]) <= u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JLE32_REG:
+        if (u32(reg[inst.dst]) <= u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSET_IMM:
+        if (reg[inst.dst] & inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSET_REG:
+        if (reg[inst.dst] & reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSET32_IMM:
+        if (u32(reg[inst.dst]) & u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSET32_REG:
+        if (u32(reg[inst.dst]) & u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JNE_IMM:
+        if (reg[inst.dst] != inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JNE_REG:
+        if (reg[inst.dst] != reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JNE32_IMM:
+        if (u32(reg[inst.dst]) != u32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JNE32_REG:
+        if (u32(reg[inst.dst]) != u32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGT_IMM:
+        if ((int64_t)reg[inst.dst] > inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGT_REG:
+        if ((int64_t)reg[inst.dst] > (int64_t)reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGT32_IMM:
+        if (i32(reg[inst.dst]) > i32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGT32_REG:
+        if (i32(reg[inst.dst]) > i32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGE_IMM:
+        if ((int64_t)reg[inst.dst] >= inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGE_REG:
+        if ((int64_t)reg[inst.dst] >= (int64_t)reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGE32_IMM:
+        if (i32(reg[inst.dst]) >= i32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSGE32_REG:
+        if (i32(reg[inst.dst]) >= i32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLT_IMM:
+        if ((int64_t)reg[inst.dst] < inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLT_REG:
+        if ((int64_t)reg[inst.dst] < (int64_t)reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLT32_IMM:
+        if (i32(reg[inst.dst]) < i32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLT32_REG:
+        if (i32(reg[inst.dst]) < i32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLE_IMM:
+        if ((int64_t)reg[inst.dst] <= inst.imm) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLE_REG:
+        if ((int64_t)reg[inst.dst] <= (int64_t)reg[inst.src]) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLE32_IMM:
+        if (i32(reg[inst.dst]) <= i32(inst.imm)) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_JSLE32_REG:
+        if (i32(reg[inst.dst]) <= i32(reg[inst.src])) {
+            vm->pc += inst.offset;
+        }
+        break;
+    case EBPF_OP_EXIT:
+        vm->return_value = reg[0];
+        return 0;
+    case EBPF_OP_CALL:
+        reg[0] = vm->ext_funcs[inst.imm](reg[1], reg[2], reg[3], reg[4], reg[5]);
+        // Unwind the stack if unwind extension returns success.
+        if (inst.imm == vm->unwind_stack_extension_index && reg[0] == 0) {
+            vm->return_value = reg[0];
+            return 0;
+        }
+        break;
+    }
+
+    return 1;
+}
+
+int
+ubpf_exec(struct ubpf_vm* vm)
+{
+    if (vm->pc != 0) {
+        /* Not at the beginning of program */
+        return -1;
+    }
+    if (!vm->insts) {
         /* Code must be loaded before we can execute */
         return -1;
     }
 
-#ifdef DEBUG
-    if (vm->regs)
-        reg = vm->regs;
-    else
-        reg = _reg;
-#else
-    reg = _reg;
-#endif
-
-    reg[1] = (uintptr_t)mem;
-    reg[2] = (uint64_t)mem_len;
-    reg[10] = (uintptr_t)stack + sizeof(stack);
-
-    while (1) {
-        const uint16_t cur_pc = pc;
-        struct ebpf_inst inst = ubpf_fetch_instruction(vm, pc++);
-
-        switch (inst.opcode) {
-        case EBPF_OP_ADD_IMM:
-            reg[inst.dst] += inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_ADD_REG:
-            reg[inst.dst] += reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_SUB_IMM:
-            reg[inst.dst] -= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_SUB_REG:
-            reg[inst.dst] -= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MUL_IMM:
-            reg[inst.dst] *= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MUL_REG:
-            reg[inst.dst] *= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_DIV_IMM:
-            reg[inst.dst] = u32(inst.imm) ? u32(reg[inst.dst]) / u32(inst.imm) : 0;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_DIV_REG:
-            reg[inst.dst] = reg[inst.src] ? u32(reg[inst.dst]) / u32(reg[inst.src]) : 0;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_OR_IMM:
-            reg[inst.dst] |= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_OR_REG:
-            reg[inst.dst] |= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_AND_IMM:
-            reg[inst.dst] &= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_AND_REG:
-            reg[inst.dst] &= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_LSH_IMM:
-            reg[inst.dst] <<= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_LSH_REG:
-            reg[inst.dst] <<= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_RSH_IMM:
-            reg[inst.dst] = u32(reg[inst.dst]) >> inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_RSH_REG:
-            reg[inst.dst] = u32(reg[inst.dst]) >> reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_NEG:
-            reg[inst.dst] = -(int64_t)reg[inst.dst];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MOD_IMM:
-            reg[inst.dst] = u32(inst.imm) ? u32(reg[inst.dst]) % u32(inst.imm) : u32(reg[inst.dst]);
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MOD_REG:
-            reg[inst.dst] = u32(reg[inst.src]) ? u32(reg[inst.dst]) % u32(reg[inst.src]) : u32(reg[inst.dst]);
-            break;
-        case EBPF_OP_XOR_IMM:
-            reg[inst.dst] ^= inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_XOR_REG:
-            reg[inst.dst] ^= reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MOV_IMM:
-            reg[inst.dst] = inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_MOV_REG:
-            reg[inst.dst] = reg[inst.src];
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_ARSH_IMM:
-            reg[inst.dst] = (int32_t)reg[inst.dst] >> inst.imm;
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-        case EBPF_OP_ARSH_REG:
-            reg[inst.dst] = (int32_t)reg[inst.dst] >> u32(reg[inst.src]);
-            reg[inst.dst] &= UINT32_MAX;
-            break;
-
-        case EBPF_OP_LE:
-            if (inst.imm == 16) {
-                reg[inst.dst] = htole16(reg[inst.dst]);
-            } else if (inst.imm == 32) {
-                reg[inst.dst] = htole32(reg[inst.dst]);
-            } else if (inst.imm == 64) {
-                reg[inst.dst] = htole64(reg[inst.dst]);
-            }
-            break;
-        case EBPF_OP_BE:
-            if (inst.imm == 16) {
-                reg[inst.dst] = htobe16(reg[inst.dst]);
-            } else if (inst.imm == 32) {
-                reg[inst.dst] = htobe32(reg[inst.dst]);
-            } else if (inst.imm == 64) {
-                reg[inst.dst] = htobe64(reg[inst.dst]);
-            }
-            break;
-
-        case EBPF_OP_ADD64_IMM:
-            reg[inst.dst] += inst.imm;
-            break;
-        case EBPF_OP_ADD64_REG:
-            reg[inst.dst] += reg[inst.src];
-            break;
-        case EBPF_OP_SUB64_IMM:
-            reg[inst.dst] -= inst.imm;
-            break;
-        case EBPF_OP_SUB64_REG:
-            reg[inst.dst] -= reg[inst.src];
-            break;
-        case EBPF_OP_MUL64_IMM:
-            reg[inst.dst] *= inst.imm;
-            break;
-        case EBPF_OP_MUL64_REG:
-            reg[inst.dst] *= reg[inst.src];
-            break;
-        case EBPF_OP_DIV64_IMM:
-            reg[inst.dst] = inst.imm ? reg[inst.dst] / inst.imm : 0;
-            break;
-        case EBPF_OP_DIV64_REG:
-            reg[inst.dst] = reg[inst.src] ? reg[inst.dst] / reg[inst.src] : 0;
-            break;
-        case EBPF_OP_OR64_IMM:
-            reg[inst.dst] |= inst.imm;
-            break;
-        case EBPF_OP_OR64_REG:
-            reg[inst.dst] |= reg[inst.src];
-            break;
-        case EBPF_OP_AND64_IMM:
-            reg[inst.dst] &= inst.imm;
-            break;
-        case EBPF_OP_AND64_REG:
-            reg[inst.dst] &= reg[inst.src];
-            break;
-        case EBPF_OP_LSH64_IMM:
-            reg[inst.dst] <<= inst.imm;
-            break;
-        case EBPF_OP_LSH64_REG:
-            reg[inst.dst] <<= reg[inst.src];
-            break;
-        case EBPF_OP_RSH64_IMM:
-            reg[inst.dst] >>= inst.imm;
-            break;
-        case EBPF_OP_RSH64_REG:
-            reg[inst.dst] >>= reg[inst.src];
-            break;
-        case EBPF_OP_NEG64:
-            reg[inst.dst] = -reg[inst.dst];
-            break;
-        case EBPF_OP_MOD64_IMM:
-            reg[inst.dst] = inst.imm ? reg[inst.dst] % inst.imm : reg[inst.dst];
-            break;
-        case EBPF_OP_MOD64_REG:
-            reg[inst.dst] = reg[inst.src] ? reg[inst.dst] % reg[inst.src] : reg[inst.dst];
-            break;
-        case EBPF_OP_XOR64_IMM:
-            reg[inst.dst] ^= inst.imm;
-            break;
-        case EBPF_OP_XOR64_REG:
-            reg[inst.dst] ^= reg[inst.src];
-            break;
-        case EBPF_OP_MOV64_IMM:
-            reg[inst.dst] = inst.imm;
-            break;
-        case EBPF_OP_MOV64_REG:
-            reg[inst.dst] = reg[inst.src];
-            break;
-        case EBPF_OP_ARSH64_IMM:
-            reg[inst.dst] = (int64_t)reg[inst.dst] >> inst.imm;
-            break;
-        case EBPF_OP_ARSH64_REG:
-            reg[inst.dst] = (int64_t)reg[inst.dst] >> reg[inst.src];
-            break;
-
-            /*
-             * HACK runtime bounds check
-             *
-             * Needed since we don't have a verifier yet.
-             */
-#define BOUNDS_CHECK_LOAD(size)                                                                                 \
-    do {                                                                                                        \
-        if (!bounds_check(vm, (char*)reg[inst.src] + inst.offset, size, "load", cur_pc, mem, mem_len, stack)) { \
-            return -1;                                                                                          \
-        }                                                                                                       \
-    } while (0)
-#define BOUNDS_CHECK_STORE(size)                                                                                 \
-    do {                                                                                                         \
-        if (!bounds_check(vm, (char*)reg[inst.dst] + inst.offset, size, "store", cur_pc, mem, mem_len, stack)) { \
-            return -1;                                                                                           \
-        }                                                                                                        \
-    } while (0)
-
-        case EBPF_OP_LDXW:
-            BOUNDS_CHECK_LOAD(4);
-            reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 4);
-            break;
-        case EBPF_OP_LDXH:
-            BOUNDS_CHECK_LOAD(2);
-            reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 2);
-            break;
-        case EBPF_OP_LDXB:
-            BOUNDS_CHECK_LOAD(1);
-            reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 1);
-            break;
-        case EBPF_OP_LDXDW:
-            BOUNDS_CHECK_LOAD(8);
-            reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 8);
-            break;
-
-        case EBPF_OP_STW:
-            BOUNDS_CHECK_STORE(4);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 4);
-            break;
-        case EBPF_OP_STH:
-            BOUNDS_CHECK_STORE(2);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 2);
-            break;
-        case EBPF_OP_STB:
-            BOUNDS_CHECK_STORE(1);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 1);
-            break;
-        case EBPF_OP_STDW:
-            BOUNDS_CHECK_STORE(8);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 8);
-            break;
-
-        case EBPF_OP_STXW:
-            BOUNDS_CHECK_STORE(4);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 4);
-            break;
-        case EBPF_OP_STXH:
-            BOUNDS_CHECK_STORE(2);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 2);
-            break;
-        case EBPF_OP_STXB:
-            BOUNDS_CHECK_STORE(1);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 1);
-            break;
-        case EBPF_OP_STXDW:
-            BOUNDS_CHECK_STORE(8);
-            ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 8);
-            break;
-
-        case EBPF_OP_LDDW:
-            reg[inst.dst] = u32(inst.imm) | ((uint64_t)ubpf_fetch_instruction(vm, pc++).imm << 32);
-            break;
-
-        case EBPF_OP_JA:
-            pc += inst.offset;
-            break;
-        case EBPF_OP_JEQ_IMM:
-            if (reg[inst.dst] == inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JEQ_REG:
-            if (reg[inst.dst] == reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JEQ32_IMM:
-            if (u32(reg[inst.dst]) == u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JEQ32_REG:
-            if (u32(reg[inst.dst]) == reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGT_IMM:
-            if (reg[inst.dst] > u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGT_REG:
-            if (reg[inst.dst] > reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGT32_IMM:
-            if (u32(reg[inst.dst]) > u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGT32_REG:
-            if (u32(reg[inst.dst]) > u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGE_IMM:
-            if (reg[inst.dst] >= u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGE_REG:
-            if (reg[inst.dst] >= reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGE32_IMM:
-            if (u32(reg[inst.dst]) >= u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JGE32_REG:
-            if (u32(reg[inst.dst]) >= u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLT_IMM:
-            if (reg[inst.dst] < u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLT_REG:
-            if (reg[inst.dst] < reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLT32_IMM:
-            if (u32(reg[inst.dst]) < u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLT32_REG:
-            if (u32(reg[inst.dst]) < u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLE_IMM:
-            if (reg[inst.dst] <= u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLE_REG:
-            if (reg[inst.dst] <= reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLE32_IMM:
-            if (u32(reg[inst.dst]) <= u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JLE32_REG:
-            if (u32(reg[inst.dst]) <= u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSET_IMM:
-            if (reg[inst.dst] & inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSET_REG:
-            if (reg[inst.dst] & reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSET32_IMM:
-            if (u32(reg[inst.dst]) & u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSET32_REG:
-            if (u32(reg[inst.dst]) & u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JNE_IMM:
-            if (reg[inst.dst] != inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JNE_REG:
-            if (reg[inst.dst] != reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JNE32_IMM:
-            if (u32(reg[inst.dst]) != u32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JNE32_REG:
-            if (u32(reg[inst.dst]) != u32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGT_IMM:
-            if ((int64_t)reg[inst.dst] > inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGT_REG:
-            if ((int64_t)reg[inst.dst] > (int64_t)reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGT32_IMM:
-            if (i32(reg[inst.dst]) > i32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGT32_REG:
-            if (i32(reg[inst.dst]) > i32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGE_IMM:
-            if ((int64_t)reg[inst.dst] >= inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGE_REG:
-            if ((int64_t)reg[inst.dst] >= (int64_t)reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGE32_IMM:
-            if (i32(reg[inst.dst]) >= i32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSGE32_REG:
-            if (i32(reg[inst.dst]) >= i32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLT_IMM:
-            if ((int64_t)reg[inst.dst] < inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLT_REG:
-            if ((int64_t)reg[inst.dst] < (int64_t)reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLT32_IMM:
-            if (i32(reg[inst.dst]) < i32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLT32_REG:
-            if (i32(reg[inst.dst]) < i32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLE_IMM:
-            if ((int64_t)reg[inst.dst] <= inst.imm) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLE_REG:
-            if ((int64_t)reg[inst.dst] <= (int64_t)reg[inst.src]) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLE32_IMM:
-            if (i32(reg[inst.dst]) <= i32(inst.imm)) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_JSLE32_REG:
-            if (i32(reg[inst.dst]) <= i32(reg[inst.src])) {
-                pc += inst.offset;
-            }
-            break;
-        case EBPF_OP_EXIT:
-            *bpf_return_value = reg[0];
-            return 0;
-        case EBPF_OP_CALL:
-            reg[0] = vm->ext_funcs[inst.imm](reg[1], reg[2], reg[3], reg[4], reg[5]);
-            // Unwind the stack if unwind extension returns success.
-            if (inst.imm == vm->unwind_stack_extension_index && reg[0] == 0) {
-                *bpf_return_value = reg[0];
-                return 0;
-            }
-            break;
+    while(1) {
+        int rc = ubpf_exec_step(vm);
+        if (rc <= 0) {
+            // VM terminated (maybe with error)
+            return rc;
         }
     }
 }
@@ -1036,37 +1064,6 @@ ubpf_error(const char* fmt, ...)
     va_end(ap);
     return msg;
 }
-
-#ifdef DEBUG
-void
-ubpf_set_registers(struct ubpf_vm* vm, uint64_t* regs)
-{
-    vm->regs = regs;
-}
-
-uint64_t*
-ubpf_get_registers(const struct ubpf_vm* vm)
-{
-    return vm->regs;
-}
-#else
-void
-ubpf_set_registers(struct ubpf_vm* vm, uint64_t* regs)
-{
-    (void)vm;
-    (void)regs;
-    fprintf(stderr, "uBPF warning: registers are not exposed in release mode. Please recompile in debug mode\n");
-}
-
-uint64_t*
-ubpf_get_registers(const struct ubpf_vm* vm)
-{
-    (void)vm;
-    fprintf(stderr, "uBPF warning: registers are not exposed in release mode. Please recompile in debug mode\n");
-    return NULL;
-}
-
-#endif
 
 typedef struct _ebpf_encoded_inst
 {

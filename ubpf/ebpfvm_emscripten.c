@@ -1,5 +1,6 @@
 #include <emscripten.h>
 #include "ubpf_int.h"
+#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -23,10 +24,36 @@ int error_printf(FILE* stream, const char *format, ...) {
     return len;
 }
 
-uint64_t ubpf_default_extension_func(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e) {
+uint64_t ebpf_trace_printk(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5) {
+    char outBuffer[10240];
+
+    const char *fmt = (const char *)(r1);
+    char *safe_fmt = NULL;
+    size_t fmt_len = (size_t)(r2);
+    if (strnlen(fmt, fmt_len + 1) == fmt_len + 1) {
+        char *safe_fmt = malloc(fmt_len + 1);
+        strncpy(safe_fmt, fmt, fmt_len);
+        safe_fmt[fmt_len] = '\0';
+        fmt = safe_fmt;
+    }
+    /* Unknown if r3, r4, r5 are needed; let sprintf figure it out. */
+    int rc = snprintf(outBuffer, sizeof(outBuffer), fmt, r3, r4, r5);
+    if (rc < 0) {
+        error_printf(NULL, "ebpf_trace_printk() encountered error");
+        free(safe_fmt);
+        return rc;
+    }
+    EM_ASM({
+        console.log("ebpf_trace_printk(): ", UTF8ToString($0));
+    }, outBuffer);
+    free(safe_fmt);
+    return 0;
+}
+
+uint64_t ubpf_default_extension_func(uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5) {
     EM_ASM({
         console.log("ubpf_default_extension_func(%d, %d, %d, %d, %d)", $0, $1, $2, $3, $4);
-    }, a, b, c, d, e);
+    }, r1, r2, r3, r4, r5);
     return 0;
 }
 
@@ -64,6 +91,10 @@ int EMSCRIPTEN_KEEPALIVE ebpfvm_create_vm() {
             error_printf(NULL, "ebpfvm_create_vm(): failed to register extension func %d", i);
             return -1;
         }
+    }
+    if (ubpf_register(vm, 6, "ebpf_trace_printk", ebpf_trace_printk) < 0) {
+        error_printf(NULL, "ebpfvm_create_vm(): failed to register extension func ebpf_trace_printk");
+        return -1;
     }
 
     ubpf_set_pointer_secret(vm, 0);
@@ -111,6 +142,54 @@ uint16_t EMSCRIPTEN_KEEPALIVE ebpfvm_get_instructions_count() {
     return vm->num_insts;
 }
 
+void * EMSCRIPTEN_KEEPALIVE ebpfvm_get_memory() {
+    if (vm == NULL) {
+        return NULL;
+    }
+    return vm->mem;
+}
+
+int EMSCRIPTEN_KEEPALIVE ebpfvm_get_memory_len() {
+    if (vm == NULL) {
+        return 0;
+    }
+    return vm->mem_len;
+}
+
+void * EMSCRIPTEN_KEEPALIVE ebpfvm_get_stack() {
+    if (vm == NULL) {
+        return NULL;
+    }
+    return vm->stack;
+}
+
+int EMSCRIPTEN_KEEPALIVE ebpfvm_get_stack_len() {
+    if (vm == NULL) {
+        return 0;
+    }
+    return UBPF_STACK_SIZE;
+}
+
+uint16_t * EMSCRIPTEN_KEEPALIVE ebpfvm_get_programcounter_address() {
+    if (vm == NULL) {
+        return NULL;
+    }
+    return &(vm->pc);
+}
+
+uint64_t * EMSCRIPTEN_KEEPALIVE ebpfvm_get_registers() {
+    if (vm == NULL) {
+        return NULL;
+    }
+    return vm->regs;
+}
+
+int EMSCRIPTEN_KEEPALIVE ebpfvm_exec_step() {
+    if (vm == NULL) {
+        error_printf(NULL, "ebpfvm_exec_step(): VM not initialized");
+    }
+    return ubpf_exec_step(vm);
+}
 
 int EMSCRIPTEN_KEEPALIVE emadd(int start, int n) {
     int sum = 42;
