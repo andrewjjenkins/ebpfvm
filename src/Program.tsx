@@ -15,7 +15,7 @@ const codeStyle = {
 };
 
 interface ProgramProps {
-    instructionPointer: number;
+    programCounter: number;
     instructions: Uint8Array;
 }
 
@@ -28,7 +28,7 @@ const Program: FC<ProgramProps> = (props) => {
 
     for (let i = 0; i < numInstructions; i++) {
         const addr = i*8;
-        const active = (props.instructionPointer === addr);
+        const active = (props.programCounter * 8 === addr);
         const offset = props.instructions.byteOffset + addr;
         const instView = new Uint8Array(props.instructions.buffer, offset, 8);
         let inst = "";

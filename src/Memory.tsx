@@ -1,6 +1,5 @@
 import {
     FunctionComponent as FC,
-    useState,
 } from 'react';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
@@ -8,8 +7,12 @@ import ListItem from '@mui/material/ListItem';
 import Typography from '@mui/material/Typography';
 
 interface MemoryProps {
+    title: string,
     memory: Uint8Array,
+    startingAddress?: number,
     numWordsToShow?: number,
+    hotAddress?: number,
+    timeStep?: number,
 }
 
 const DEFAULT_NUM_WORDS_TO_SHOW = 8;
@@ -29,26 +32,28 @@ const codeStyle = {
 const min = (a: number, b: number) => (a < b) ? a : b;
 
 const Memory: FC<MemoryProps> = (props) => {
-    const [hotAddress] = useState(0);
-    
-    // FIXME: hotAddress should probably be rounded to hotWordAddress?
-
+    const startingAddress = props.startingAddress || 0;
+    const hotAddress = props.hotAddress || 0;
     const numWords: number = props.numWordsToShow || DEFAULT_NUM_WORDS_TO_SHOW;
     const halfNumWords = Math.ceil(numWords / 2);
 
-    const showTop = (numWords * 4 > hotAddress);
+    if (hotAddress < startingAddress) {
+        throw new Error(`Hot address ${hotAddress} < starting address ${startingAddress}`);
+    }
+
+    const showTop = (startingAddress + numWords * 4 > hotAddress);
     const showBottom = (numWords * 4 + hotAddress > props.memory.byteLength);
 
     // FIXME: If we're trying to highlight one of the last words in memory
     // we don't show enough words (we only show "half" the words - those that
     // come before).
-    const firstWordAddr = showTop ? 0 : hotAddress - (halfNumWords * 4);
-    const lastWordAddr = min(firstWordAddr + (numWords * 4), props.memory.byteLength);
+    const firstWordAddr = showTop ? startingAddress : hotAddress - (halfNumWords * 4);
+    const lastWordAddr = min(firstWordAddr + (numWords * 4), startingAddress + props.memory.byteLength);
 
     const renderedWord = (addr: number) => {
         let memLine = `0x${addr.toString(16).padStart(8, '0')}: `;
-        const stop = min(addr + 4, props.memory.byteLength);
-        for (let i = addr; i < stop; i++) {
+        const stop = min(addr - startingAddress + 4, props.memory.byteLength);
+        for (let i = addr - startingAddress; i < stop; i++) {
             memLine += ` ${props.memory[i].toString(16).padStart(2, '0')}`;
         }
         return (
@@ -65,7 +70,7 @@ const Memory: FC<MemoryProps> = (props) => {
 
     return (
         <Box>
-            <Typography variant="h5" component="div">Memory</Typography>
+            <Typography variant="h5" component="div">{props.title}</Typography>
             <List sx={style} aria-label="memory">
                 { showTop ? null : (
                     <ListItem key="showTop">
@@ -80,6 +85,7 @@ const Memory: FC<MemoryProps> = (props) => {
                 )}
 
             </List>
+            <Typography variant="h6" component="div">Time: {props.timeStep || 0}</Typography>
         </Box>
     )
 

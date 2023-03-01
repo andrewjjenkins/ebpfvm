@@ -6,14 +6,21 @@ import Button from '@mui/material/Button';
 import ReplayIcon from '@mui/icons-material/Replay';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { Typography } from '@mui/material';
 
 interface StepControllerProps {
     onReset(): void;
     onStep(): void;
     onPlay(): void;
+    error: string | null;
 }
 
 const StepController: FC<StepControllerProps> = (props) => {
+    const errorRendered = props.error ? (
+        <Typography>{props.error}</Typography>
+    ) : (
+        <Typography>No Error</Typography>
+    );
     return (
         <Box>
             <Button
@@ -31,6 +38,7 @@ const StepController: FC<StepControllerProps> = (props) => {
                 startIcon={<PlayArrowIcon />}
                 onClick={props.onPlay}
             >Run</Button>
+            {errorRendered}
         </Box>
     );
 };

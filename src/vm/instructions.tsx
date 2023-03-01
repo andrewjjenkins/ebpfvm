@@ -1,7 +1,7 @@
 import * as c from "./consts";
 
 const signedOffset = (code: Uint8Array, offset: number) => {
-    const offUnsigned = code[offset] << 8 + code[offset];
+    const offUnsigned = (code[offset]) | (code[offset + 1] << 8);
     if (offUnsigned >= 32768) {
         return - (65536 - offUnsigned)
     } else {
@@ -55,7 +55,11 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
         if (op === c.InstructionJumps.EBPF_EXIT) {
             return opName;
         } else if (op === c.InstructionJumps.EBPF_CALL) {
-            return `${opName} ${imm}`;
+            if (imm < c.EBPF_HELPER_FUNC_NAMES.length) {
+                return `${opName} ${c.EBPF_HELPER_FUNC_NAMES[imm]}`;
+            } else {
+                return `${opName} ${imm}`;
+            }
         } else if (op === c.InstructionJumps.EBPF_JA) {
             return `${opName} ${offset}`;
         } else if (source === 0) {
