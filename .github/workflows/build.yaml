@@ -7,7 +7,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GH_PAGES_URL: ${{ steps.deployment.outputs.page_url }}
 
 jobs:
   build-and-push-image:
@@ -83,4 +82,13 @@ jobs:
         run: |
           cd /tmp
           tar -xvzf /tmp/ebpfvm-static.tar.gz
-          ls -alhR .
+          ls -alhR html/
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: "html"
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
+        id: deployment
