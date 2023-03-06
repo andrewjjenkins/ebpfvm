@@ -72,22 +72,15 @@ jobs:
           name: ebpfvm-static
           path: /tmp
 
-      - name: echo url
-        run: |
-          echo "URL: ${{ env.url }}"
-          echo "URL take 2: ${{ steps.deployment.outputs.page_url }}"
-          echo "URL take 3: ${GH_PAGES_URL}"
-
       - name: Unpack
         run: |
           cd /tmp
           tar -xvzf /tmp/ebpfvm-static.tar.gz
-          ls -alhR html/
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          path: "/tmp/html"
+          path: "/tmp/html/ebpfvm"
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v1
