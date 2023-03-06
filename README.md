@@ -65,4 +65,8 @@ This project depends on an imported and slightly modified version of
 from Big Switch Networks.  All of that code is in the `ubpf/`
 directory, and is licensed Apache 2.0 as well, see [ubpf/LICENSE](./ubpf/LICENSE.txt).
 
-If you use this in a part of another project, I'd love to hear about it!
+The favicon is based on [twemoji](https://github.com/twitter/twemoji),
+Copyright 2020 Twitter, Inc and other contributors.  CC-BY 4.0
+(https://creativecommons.org/licenses/by/4.0/)
+
+If you use ebpfvm in a part of another project, I'd love to hear about it!
