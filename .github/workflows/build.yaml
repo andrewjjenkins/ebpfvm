@@ -7,6 +7,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GH_PAGES_URL: ${{ steps.deployment.outputs.page_url }}
 
 jobs:
   build-and-push-image:
@@ -76,6 +77,7 @@ jobs:
         run: |
           echo "URL: ${{ env.url }}"
           echo "URL take 2: ${{ steps.deployment.outputs.page_url }}"
+          echo "URL take 3: ${GH_PAGES_URL}"
 
       - name: Unpack
         run: |
