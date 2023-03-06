@@ -74,10 +74,11 @@ jobs:
 
       - name: echo url
         run: |
-          echo ${url}
+          echo "URL: ${{ env.url }}"
+          echo "URL take 2: ${{ steps.deployment.outputs.page_url }}"
 
       - name: Unpack
         run: |
           cd /tmp
-          tar -xvzf /tmp/ebpfvm-static.tar
+          tar -xvzf /tmp/ebpfvm-static.tar.gz
           ls -alhR .
