@@ -100,7 +100,6 @@ const Memory: FC<MemoryProps> = (props) => {
                 )}
 
             </List>
-            <Typography variant="h6" component="div">Time: {props.timeStep || 0}</Typography>
         </Box>
     )
 
