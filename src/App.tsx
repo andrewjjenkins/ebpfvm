@@ -25,10 +25,11 @@ import Content from './Content';
 function Copyright() {
   return (
     <Typography variant="body2" color="text.secondary" align="center">
-      {'Copyright © '}
-      <Link color="inherit" href="https://github.com/andrewjjenkins">
+      {'© '}
+      <Link color="inherit" href="https://github.com/andrewjjenkins" target="_blank">
         Andrew Jenkins
-      </Link>{' 2022'}
+      </Link>{' 2022 (Apache 2.0) | '}
+      <Link color="inherit" href="https://github.com/andrewjjenkins/ebpfvm" target="_blank">source</Link>
     </Typography>
   );
 }

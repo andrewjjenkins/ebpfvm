@@ -2,9 +2,14 @@
 
 This is an implementation of the BPF/eBPF virtual machine in the browser.  Primarily for purposes of experimentation or single-stepping through a BPF program.
 
-The eBPF virtual machine itself is from [UBPF](https://github.com/iovisor/ubpf), the Userspace BPF VM.  UBPF is written in C; it is compiled to WebAssembly (WASM)(https://webassembly.org/) by [Emscripten](https://emscripten.org/).  Then Javascript (TypeScript) from [src/vm](./src/vm/) is used to load the WASM into the browser, and operate the VM.
+The eBPF virtual machine itself is from [UBPF](https://github.com/iovisor/ubpf),
+the Userspace BPF VM.  UBPF is written in C; it is compiled to WebAssembly
+([WASM](https://webassembly.org/)) by [Emscripten](https://emscripten.org/).
+Then Javascript (TypeScript) from [src/vm](./src/vm/) is used to load the WASM
+into the browser, and operate the VM.
 
 # Run
+You can try it out live in the browser: go [here](https://andrewjjenkins.github.io/ebpfvm/)
 
 You can run the latest build:
 
@@ -27,7 +32,9 @@ You will need:
 - tar
 - Python 3 (for emscripten)
 
-The setup will download Emscripten's "emsdk" into the `emsdk/` directory, which is large (~1GB).  If you already have emsdk somewhere else, you can symlink the `emsdk/` directory to your installed location before running any build steps.
+The setup will download Emscripten's "emsdk" into the `emsdk/` directory, which
+is large (~1GB).  If you already have emsdk somewhere else, you can symlink the
+`emsdk/` directory to your installed location before running any build steps.
 
 To build, run "make":
 
