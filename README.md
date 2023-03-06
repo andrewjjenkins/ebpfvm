@@ -2,6 +2,43 @@
 
 This is an implementation of the BPF/eBPF virtual machine in the browser.  Primarily for purposes of experimentation or single-stepping through a BPF program.
 
+# Run
+
+```
+docker run --rm -it -p 8080:80 ebpfvm
+```
+
+Navigate to [http://localhost:8080/](http://localhost:8080/)
+
+# Setup
+
+Development is done on Linux; building may work on other platforms.
+
+You will need:
+
+- node.js (v14.18.2 is the version I use)
+- make
+- bash
+- curl
+- tar
+- Python 3 (for emscripten)
+
+The setup will download Emscripten's "emsdk" into the `emsdk/` directory, which is large (~1GB).  If you already have emsdk somewhere else, you can symlink the `emsdk/` directory to your installed location before running any build steps.
+
+To build, run "make":
+
+```
+make
+```
+
+This will produce HTML/CSS/JS in the build/ directory that you can serve with any webserver.
+
+If you'd like to do interactive development, run this instead:
+
+```
+make run
+```
+
 # License
 
 BSD 3-Clause, see [LICENSE](./LICENSE)

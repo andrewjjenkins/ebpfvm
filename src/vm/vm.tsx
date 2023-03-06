@@ -2,9 +2,9 @@ import { Cpu } from './cpu';
 import { Memory } from './memory';
 import { loadHexbytecode, Program } from './program';
 import { Packet } from './packet';
-import { DEFAULT_MEMORY_INIT, HELLOWORLD_HEXBYTECODE } from './consts';
+import { HELLOWORLD_HEXBYTECODE } from './consts';
 
-const UbpfModule = require('./ubpf.js');
+const Ubpf = require('../generated/ubpf.js');
 
 interface UbpfModule extends EmscriptenModule {
     _ebpfvm_create_vm(): number;
@@ -43,7 +43,7 @@ export class Vm {
 }
 
 export const newVm = () => {
-    return UbpfModule({
+    return Ubpf({
         locateFile: (path: string, scriptDirectory: string) => {
             // This assumes that you have put the .wasm file
             // directly in the top level of public/
