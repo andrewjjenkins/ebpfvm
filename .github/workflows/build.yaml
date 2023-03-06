@@ -87,7 +87,7 @@ jobs:
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          path: "html"
+          path: "/tmp/html"
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v1
