@@ -62,7 +62,7 @@ export const newVm = () => {
         locateFile: (path: string, scriptDirectory: string) => {
             // This assumes that you have put the .wasm file
             // directly in the top level of public/
-            return "/" + path;
+            return process.env.PUBLIC_URL + "/" + path;
         }
     }).then((mod: UbpfModule) => {
         const vmCreateOk = mod._ebpfvm_create_vm();

@@ -28,7 +28,7 @@ RUN make emsdk/upstream/emscripten/emcc
 RUN yarn
 
 COPY tools tools/
-COPY .eslintignore tsconfig.json /ebpfvm/
+COPY .eslintignore tsconfig.json .env /ebpfvm/
 COPY ubpf ubpf/
 COPY public public/
 COPY src src/
@@ -36,5 +36,6 @@ COPY src src/
 RUN make
 
 FROM nginx:1.22
-COPY --from=build /ebpfvm/build/ /usr/share/nginx/html
+RUN mkdir /usr/share/nginx/html/ebpfvm/
+COPY --from=build /ebpfvm/build/ /usr/share/nginx/html/ebpfvm
 COPY tools/nginx.conf /etc/nginx/conf.d/default.conf
