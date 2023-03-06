@@ -4,8 +4,10 @@ This is an implementation of the BPF/eBPF virtual machine in the browser.  Prima
 
 # Run
 
+You can run the latest build:
+
 ```
-docker run --rm -it -p 8080:80 ebpfvm
+docker run --rm -it -p 8080:80 ghcr.io/andrewjjenkins/ebpfvm:main
 ```
 
 Navigate to [http://localhost:8080/](http://localhost:8080/)
@@ -41,9 +43,11 @@ make run
 
 # License
 
-BSD 3-Clause, see [LICENSE](./LICENSE)
+Apache 2.0, see [LICENSE.txt](./LICENSE.txt)
 
 This project depends on an imported and slightly modified version of
 [ubpf](https://github.com/iovisor/ubpf), the Userspace BPF implementation
 from Big Switch Networks.  All of that code is in the `ubpf/`
-directory, and is licensed Apache 2.0, see [ubpf/LICENSE](./ubpf/LICENSE.txt).
+directory, and is licensed Apache 2.0 as well, see [ubpf/LICENSE](./ubpf/LICENSE.txt).
+
+If you use this in a derivative work, I'd love to hear about it!
