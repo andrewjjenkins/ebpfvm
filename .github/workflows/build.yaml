@@ -43,7 +43,7 @@ jobs:
       - name: Copy out static site
         run: |
           mkdir /tmp/ebpfvm-static
-          docker create --name epbfvm-static ${{ steps.meta.outputs.tags }}
+          docker create --name ebpfvm-static ${{ steps.meta.outputs.tags }}
           docker cp ebpfvm-static:/usr/share/nginx/html/ /tmp/ebpfvm-static/
           tar -cvzf /tmp/ebpfvm-static.tar.gz -C /tmp/ebpfvm-static html/
 
