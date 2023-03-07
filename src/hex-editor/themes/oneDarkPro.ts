@@ -3,6 +3,7 @@ import { HexEditorTheme } from '.';
 const hexEditorTheme: HexEditorTheme = {
   asciiPaddingX: 0,
   bytePaddingX: '0.1em',
+  separatorBytePaddingX: '0.75em',
   rowPaddingY: '0.1em',
   colorBackground: '#282c34',
   colorBackgroundEven: '#282c34',

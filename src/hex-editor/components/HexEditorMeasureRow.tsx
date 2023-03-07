@@ -23,6 +23,7 @@ interface Props {
   asciiValue?: number,
   asciiWidth?: number,
   byteWidth?: number,
+  separatorByteWidth?: number,
   className?: string,
   classNames?: HexEditorClassNames,
   data?: Uint8Array | number[],
@@ -34,6 +35,7 @@ interface Props {
   onMeasure?: (measurements: {
     asciiWidth: number,
     byteWidth: number,
+    separatorByteWidth: number,
     gutterWidth: number,
     labelWidth: number,
     rowHeight: number,
@@ -50,6 +52,7 @@ const HexEditorMeasureRow = ({
   asciiValue,
   asciiWidth: explicitAsciiWidth,
   byteWidth: explicitByteWidth,
+  separatorByteWidth: explicitSeparatorByteWidth,
   className,
   classNames = EMPTY_CLASSNAMES,
   formatOffset,
@@ -67,6 +70,7 @@ const HexEditorMeasureRow = ({
   const measureGutterRef = useRef<HTMLDivElement>(null);
   const measureLabelRef = useRef<HTMLDivElement>(null);
   const measureByteRef = useRef<HTMLDivElement>(null);
+  const measureSeparatorByteRef = useRef<HTMLDivElement>(null);
   const measureAsciiRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -74,6 +78,7 @@ const HexEditorMeasureRow = ({
     let gutterWidth = 0;
     let asciiWidth = 0;
     let byteWidth = 0;
+    let separatorByteWidth = 0;
     let labelWidth = 0;
     let rowHeight = 0;
 
@@ -95,6 +100,11 @@ const HexEditorMeasureRow = ({
       byteWidth = byteRect.width;
       rowHeight = Math.max(rowHeight, byteRect.height);
     }
+    if (measureSeparatorByteRef.current) {
+      const separatorByteRect = measureSeparatorByteRef.current.getBoundingClientRect();
+      separatorByteWidth = 15;
+      rowHeight = Math.max(rowHeight, separatorByteRect.height);
+    }
     if (measureLabelRef.current) {
       const labelRect = measureLabelRef.current.getBoundingClientRect();
       labelWidth = labelRect.width;
@@ -105,6 +115,7 @@ const HexEditorMeasureRow = ({
       onMeasure({
         asciiWidth,
         byteWidth,
+        separatorByteWidth,
         gutterWidth,
         labelWidth,
         rowHeight,
@@ -131,6 +142,13 @@ const HexEditorMeasureRow = ({
         className={classNames.byte}
         classNames={classNames}
         ref={measureByteRef}
+        style={{ width: explicitByteWidth, height: explicitRowHeight, ...styles.byte }}
+        value={value}
+      />
+      <HexByteValue
+        className={classNames.separator}
+        classNames={classNames}
+        ref={measureSeparatorByteRef}
         style={{ width: explicitByteWidth, height: explicitRowHeight, ...styles.byte }}
         value={value}
       />

@@ -204,6 +204,10 @@ export default css`
       }
     }
 
+    &.separator {
+      padding-left: ${hexEditorTheme('separatorBytePaddingX')};
+    }
+
     &.cursor > .nybbleHighValue,
     &.cursor > .nybbleLowValue {
       background-color: ${hexEditorTheme('colorBackgroundCursor')};

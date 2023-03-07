@@ -107,6 +107,7 @@ const HexByte = ({
           [classNames.highlight || '']: isCursor || isSelectionCursor,
           [classNames.invalid || '']: value == null,
           [classNames.odd || '']: columnIndex != null && columnIndex % 2 === 1,
+          [classNames.separator || '']: columnIndex != null && columnIndex !== 0 && columnIndex % 8 === 0,
           [classNames.selection || '']: isSelected,
           [classNames.selectionCursor || '']: isSelectionCursor,
           [classNames.selectionEnd || '']: isSelectionEnd,

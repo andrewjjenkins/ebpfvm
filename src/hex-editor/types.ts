@@ -67,6 +67,7 @@ export interface BaseHexEditorProps {
 export interface AutoSizeHexEditorProps extends BaseHexEditorProps {
   asciiWidth?: number,
   byteWidth?: number,
+  separatorByteWidth?: number,
   columns?: number,
   gutterWidth?: number,
   height?: number,
@@ -135,6 +136,7 @@ export interface HexEditorClassNames {
   selectionEnd?: string,
   selectionForward?: string,
   selectionStart?: string,
+  separator?: string,
 };
 
 export interface HexEditorInlineStyles {

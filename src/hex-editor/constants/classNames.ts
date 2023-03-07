@@ -33,6 +33,7 @@ const CLASS_NAMES: HexEditorClassNames = {
   selectionCursor: 'selectionCursor',
   selectionEnd: 'selectionEnd',
   selectionStart: 'selectionStart',
+  separator: 'separator',
 };
 
 export default CLASS_NAMES;

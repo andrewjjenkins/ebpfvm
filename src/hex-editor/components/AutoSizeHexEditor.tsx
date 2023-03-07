@@ -22,6 +22,7 @@ import HexEditorMeasureRow from './HexEditorMeasureRow';
 interface AutoSizeHexEditorState {
   asciiWidth: number,
   byteWidth: number,
+  separatorByteWidth: number,
   columns: number,
   gutterWidth: number,
   labelWidth: number,
@@ -33,6 +34,7 @@ interface AutoSizeHexEditorState {
 interface AutoSizeHexEditorAction {
   asciiWidth?: number,
   byteWidth?: number,
+  separatorByteWidth?: number,
   columns?: number,
   gutterWidth?: number,
   labelWidth?: number,
@@ -50,6 +52,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   asciiPlaceholder,
   asciiWidth: explicitAsciiWidth,
   byteWidth: explicitByteWidth,
+  separatorByteWidth: explicitSeparatorByteWidth,
   classNames = CLASS_NAMES,
   columns: explicitColumns,
   gutterWidth: explicitGutterWidth,
@@ -66,6 +69,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   const [state, setState] = useReducer(reducer, {
     asciiWidth: explicitAsciiWidth || 10,
     byteWidth: explicitByteWidth || 20,
+    separatorByteWidth: explicitSeparatorByteWidth || 15,
     columns: explicitColumns || 0x10,
     gutterWidth: explicitGutterWidth || 0,
     labelWidth: explicitLabelWidth || 80,
@@ -77,6 +81,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   const handleMeasure = useCallback(({
     asciiWidth,
     byteWidth,
+    separatorByteWidth,
     gutterWidth,
     labelWidth,
     rowHeight,
@@ -84,6 +89,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   }: {
     asciiWidth: number,
     byteWidth: number,
+    separatorByteWidth: number,
     gutterWidth: number,
     labelWidth: number,
     rowHeight: number,
@@ -92,6 +98,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
     setState({
       asciiWidth: explicitAsciiWidth == null ? asciiWidth : explicitAsciiWidth,
       byteWidth: explicitByteWidth == null ? byteWidth : explicitByteWidth,
+      separatorByteWidth: explicitSeparatorByteWidth == null ? separatorByteWidth : explicitSeparatorByteWidth,
       gutterWidth: explicitGutterWidth == null? gutterWidth : explicitGutterWidth,
       labelWidth: explicitLabelWidth == null ? labelWidth : explicitLabelWidth,
       rowHeight: explicitRowHeight == null ? rowHeight : explicitRowHeight,
@@ -100,6 +107,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   }, [
     explicitAsciiWidth,
     explicitByteWidth,
+    explicitSeparatorByteWidth,
     explicitGutterWidth,
     explicitLabelWidth,
     explicitRowHeight,
@@ -125,6 +133,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
         asciiValue={0x41}
         asciiWidth={explicitAsciiWidth}
         byteWidth={explicitByteWidth}
+        separatorByteWidth={explicitSeparatorByteWidth}
         className={props.className}
         classNames={classNames}
         formatOffset={formatOffset}
@@ -152,6 +161,9 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
               width += state.labelWidth + state.gutterWidth;
             }
             width += columns * state.byteWidth;
+            const separatorByteExtraWidth =
+              Math.max(0, (state.byteWidth - state.separatorByteWidth));
+            width += Math.floor(columns / 8) * separatorByteExtraWidth;
             if (props.showAscii) {
               width += (columns * state.asciiWidth) + state.gutterWidth;
             }

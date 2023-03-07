@@ -3,6 +3,7 @@ export type Color = string;
 export type HexEditorTheme = {
   asciiPaddingX: string | number,
   bytePaddingX: string | number,
+  separatorBytePaddingX: string | number,
   rowPaddingY: string | number,
   scrollWidth: string | number,
   cursorBlinkSpeed: string,
@@ -53,6 +54,7 @@ export type HexEditorTheme = {
 const hexEditorTheme: HexEditorTheme = {
   asciiPaddingX: 0,
   bytePaddingX: '0.1em',
+  separatorBytePaddingX: '0.75em',
   rowPaddingY: '0.1em',
   colorBackground: '#fff',
   colorBackgroundColumnEven: '#fff',
