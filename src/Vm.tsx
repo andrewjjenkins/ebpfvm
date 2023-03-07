@@ -17,6 +17,7 @@ import {
     FunctionComponent as FC,
     useEffect,
     useState,
+    useCallback,
 } from 'react';
 import Box from '@mui/material/Box';
 import { 
@@ -38,6 +39,7 @@ interface VmProps {
 const Vm: FC<VmProps> = (props) => {
     const [vmState, setVmState] = useState<VmState | null>(null);
     const [vmError, setVmError] = useState<string | null>(null);
+    const [printkLines, setPrintkLines] = useState<string[]>([]);
 
     // This is a hack to force React to consider state to have changed and then
     // re-render.  Necessary because vmState is not a well-behaved React state
@@ -45,8 +47,16 @@ const Vm: FC<VmProps> = (props) => {
     // than cloning).
     const [timeStep, setTimeStep] = useState(0);
 
+    const addPrintkLine = useCallback((line: string) => {
+        let newLines: string[] = [...printkLines, line];
+        if (newLines.length > 1024) {
+            newLines = newLines.slice(newLines.length - 1024);
+        }
+        setPrintkLines(newLines);
+    }, [printkLines, setPrintkLines]);
+
     useEffect(() => {
-        newVm().then((vm: VmState) => {setVmState(vm)});
+        newVm(addPrintkLine).then((vm: VmState) => {setVmState(vm)});
     }, []);
 
     if (vmState === null) {
@@ -59,6 +69,8 @@ const Vm: FC<VmProps> = (props) => {
 
     const onReset = () => {
         vmState.cpu.programCounter[0] = 0;
+        setPrintkLines([]);
+        setVmError(null);
         setTimeStep(timeStep + 1);
     };
     const onStep = () => {

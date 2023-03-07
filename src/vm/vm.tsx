@@ -22,7 +22,7 @@ import { HELLOWORLD_HEXBYTECODE } from './consts';
 const Ubpf = require('../generated/ubpf.js');
 
 interface UbpfModule extends EmscriptenModule {
-    _ebpfvm_create_vm(): number;
+    _ebpfvm_create_vm(logCallback: number): number;
     _ebpfvm_get_programcounter_address(): number;
     _ebpfvm_get_registers(): number;
     _ebpfvm_get_memory(): number;
@@ -33,6 +33,10 @@ interface UbpfModule extends EmscriptenModule {
     _ebpfvm_get_instructions(): number;
     _ebpfvm_validate_instructions(): number;
     _ebpfvm_exec_step(): number;
+
+    // These are controlled by '-s EXPORT_RUNTIME_FUNCTIONS' in the emcc step
+    addFunction(f: (...args: any[])=>any, signature: string): number
+    UTF8ToString(wasmAddress: number): string;
 }
 
 export class Vm {
@@ -57,7 +61,7 @@ export class Vm {
     }
 }
 
-export const newVm = () => {
+export const newVm = (printkLog: (s: string) => void) => {
     return Ubpf({
         locateFile: (path: string, scriptDirectory: string) => {
             // This assumes that you have put the .wasm file
@@ -65,7 +69,9 @@ export const newVm = () => {
             return process.env.PUBLIC_URL + "/" + path;
         }
     }).then((mod: UbpfModule) => {
-        const vmCreateOk = mod._ebpfvm_create_vm();
+        const logJsString = (wasmS: number) => printkLog(mod.UTF8ToString(wasmS));
+        const myLogWasmSlot: number = mod.addFunction(logJsString, 'vi');
+        const vmCreateOk = mod._ebpfvm_create_vm(myLogWasmSlot);
         if (vmCreateOk !== 0) {
             throw new Error("Failed to create VM");
         }

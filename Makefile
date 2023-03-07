@@ -15,7 +15,7 @@ build_vm/ubpf.wasm: $(UBPF_DEPS) emsdk/upstream/emscripten/emcc
 	mkdir -p build_vm/ src/generated/
 	/bin/bash -c "\
 		cd emsdk && . emsdk_env.sh && cd ../ && \
-		emcc -g -O0 -s MODULARIZE=1 -s ENVIRONMENT="web" -D__x86_64__=1 -Iubpf/inc -o build_vm/ubpf.js $(UBPF_C) \
+		emcc -g -O0 -s RESERVED_FUNCTION_POINTERS=100 -s EXPORTED_RUNTIME_METHODS=addFunction,UTF8ToString -s MODULARIZE=1 -s ENVIRONMENT="web" -Wbad-function-cast -Wcast-function-type -D__x86_64__=1 -Iubpf/inc -o build_vm/ubpf.js $(UBPF_C) \
 	"
 	sed -i '1 i\ /* eslint-disable */' build_vm/ubpf.js
 
