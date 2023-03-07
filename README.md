@@ -65,6 +65,11 @@ This project depends on an imported and slightly modified version of
 from Big Switch Networks.  All of that code is in the `ubpf/`
 directory, and is licensed Apache 2.0 as well, see [ubpf/LICENSE](./ubpf/LICENSE.txt).
 
+The project depends on an imported and modified version of
+[react-hex-editor](https://github.com/kmck/react-hex-editor) from Keith
+McKnight.  All of that code is in the `src/hex-editor` directory, and is
+licensed ISC, see [src/hex-editor/LICENSE](./src/hex-editor/LICENSE).
+
 The favicon is based on [twemoji](https://github.com/twitter/twemoji),
 Copyright 2020 Twitter, Inc and other contributors.  CC-BY 4.0
 (https://creativecommons.org/licenses/by/4.0/)
