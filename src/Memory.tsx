@@ -27,6 +27,7 @@ interface MemoryProps {
     numWordsToShow?: number,
     hotAddress?: number,
     timeStep?: number,
+    onSetValue?: (offset: number, value: number) => void;
 }
 
 const Memory: FC<MemoryProps> = (props) => {
@@ -45,6 +46,7 @@ const Memory: FC<MemoryProps> = (props) => {
                 nonce={props.timeStep}
                 showRowLabels={true}
                 inlineStyles={{}}
+                onSetValue={props.onSetValue}
             />
         </Box>
     )

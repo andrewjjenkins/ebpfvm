@@ -71,6 +71,10 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     };
 
+    const onSetMemoryValue = (offset: number, value: number) => {
+        vmState.stack.mem[offset] = value;
+        setTimeStep(timeStep + 1);
+    };
 
     // FIXME
     // const instructionIndex = vmState.cpu.instructionPointer / 8;
@@ -100,6 +104,7 @@ const Vm: FC<VmProps> = (props) => {
                 startingAddress={vmState.stack.mem.byteOffset}
                 hotAddress={stackPointer}
                 timeStep={timeStep}
+                onSetValue={onSetMemoryValue}
             />
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
