@@ -37,7 +37,10 @@
           dataLayer.push(arguments);
         }
         gtag('js', new Date());
-        gtag('config', 'G-KPXDL4VGDP');
+        gtag('config', 'G-KPXDL4VGDP', {
+          cookieDomain: "andrewjjenkins.github.io",
+          cookieFlags: "SameSite=None; Secure",
+        });
       });
     </script>
 
