@@ -42,6 +42,7 @@ export interface HexEditorRowProps {
   isEditing?: boolean,
   isHeader?: boolean,
   labelOffset?: number | null,
+  memoryOffset?: number,
   nonce?: number | string,
   nybbleHigh?: number | null,
   offset?: number,

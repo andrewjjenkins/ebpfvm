@@ -114,6 +114,7 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
   highlightColumn = false,
   inlineStyles = INLINE_STYLES,
   inputStyle = INPUT_STYLE,
+  memoryOffset = 0,
   nonce,
   onBlur,
   onFocus,
@@ -698,9 +699,9 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
   );
 
   const formatOffset = useMemo(() => {
-    const padToLength = 2 * Math.ceil(formatHex(Math.max(0, data.length - 1)).length / 2);
-    return (offset: number) => formatHex(offset, padToLength);
-  }, [data.length]);
+    const padToLength = 2 * Math.ceil(formatHex(Math.max(0, memoryOffset + data.length - 1)).length / 2);
+    return (offset: number) => formatHex(offset + memoryOffset, padToLength);
+  }, [data.length, memoryOffset]);
 
   const { formatHeaderOffset, formatHeaderValue } = useMemo(() => ({
     formatHeaderOffset: () => formatOffset(0).replace(/./g, '\u00A0'),

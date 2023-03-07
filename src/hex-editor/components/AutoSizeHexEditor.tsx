@@ -60,6 +60,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   inlineStyles = INLINE_STYLES,
   labelWidth: explicitLabelWidth,
   measureStyle = MEASURE_STYLE,
+  memoryOffset = 0,
   rowHeight: explicitRowHeight,
   rows: explicitRows,
   scrollbarWidth: explicitScrollbarWidth,
@@ -115,9 +116,9 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
   ]);
 
   const formatOffset = useMemo(() => {
-    const padToLength = 2 * Math.ceil(formatHex(Math.max(0, props.data.length - 1)).length / 2);
-    return (offset: number) => formatHex(offset, padToLength);
-  }, [props.data.length]);
+    const padToLength = 2 * Math.ceil(formatHex(Math.max(0, memoryOffset + props.data.length - 1)).length / 2);
+    return (offset: number) => formatHex(offset + memoryOffset, padToLength);
+  }, [props.data.length, memoryOffset]);
 
   const measureStyles = useMemo(() => ({
     ascii: { ...measureStyle, ...inlineStyles.ascii },
@@ -215,6 +216,7 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
               columns={columns}
               height={height}
               inlineStyles={inlineStyles}
+              memoryOffset={memoryOffset}
               ref={ref}
               rowHeight={rowHeight}
               rows={rows}

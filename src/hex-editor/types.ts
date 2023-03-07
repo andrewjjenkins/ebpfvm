@@ -50,6 +50,7 @@ export interface BaseHexEditorProps {
   inlineStyles?: HexEditorInlineStyles,
   highlightColumn?: boolean,
   inputStyle?: React.CSSProperties | null,
+  memoryOffset?: number,
   nonce?: number | string,
   onBlur?: (e: React.FocusEvent) => void,
   onFocus?: (e: React.FocusEvent) => void,
