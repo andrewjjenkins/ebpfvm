@@ -622,7 +622,10 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
       case editMode === EDIT_MODE_ASCII: {
         if (!readOnly) {
           const key = Keycoder.fromEvent(e.nativeEvent);
-          if (key.isPrintableCharacter && key.charCode != null) {
+          // Cast key.isPrintableCharacter to prevent typescript from warning us
+          // that formatValue is always true.  We want extra safety in case the
+          // caller is violating type rules.
+          if (key.isPrintableCharacter as any && key.charCode != null) {
             const value = shiftKey ? key.shift.charCode : key.charCode;
             if (value != null) {
               setValue(selectionEnd, value);

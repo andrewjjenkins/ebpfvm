@@ -57,7 +57,10 @@ const HexByteAscii = ({
   value = 0x00,
 }: Props, ref: React.Ref<HTMLDivElement>) => {
   const formattedValue = useMemo(
-    () => (formatValue && value != null ? formatValue(value) : value),
+    // Cast formatValue to prevent typescript from warning us that
+    // formatValue is always true.  We want extra safety in case the
+    // caller is violating type rules.
+    () => (formatValue as any && value != null ? formatValue(value) : value),
     [value, formatValue],
   );
 
