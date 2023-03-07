@@ -30,6 +30,7 @@ import CpuState from './CpuState';
 import StepController from './StepController';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
+import Output from './Output';
 
 
 interface VmProps {
@@ -137,6 +138,13 @@ const Vm: FC<VmProps> = (props) => {
                 onStep={onStep}
                 error={vmError}
                 onPlay={() => {console.log('play');}}
+            />
+        </Paper>
+        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+            <Output
+                title={"Output"}
+                printkLines={printkLines}
+                lastError={vmError}
             />
         </Paper>
         </Box>
