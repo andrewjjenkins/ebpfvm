@@ -27,6 +27,7 @@ import Memory from './Memory';
 import Program from './Program';
 import CpuState from './CpuState';
 import StepController from './StepController';
+import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 
 
@@ -91,11 +92,7 @@ const Vm: FC<VmProps> = (props) => {
 
     return (
         <Box>
-            <Memory 
-                title="Memory"
-                memory={vmState.memory.mem}
-                timeStep={timeStep}
-            />
+        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <Memory
                 title="Stack"
                 memory={vmState.stack.mem}
@@ -104,10 +101,14 @@ const Vm: FC<VmProps> = (props) => {
                 hotAddress={stackPointer}
                 timeStep={timeStep}
             />
+        </Paper>
+        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <Program 
                 programCounter={vmState.cpu.programCounter[0]}
                 instructions={vmState.program.instructions}
             />
+        </Paper>
+        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <CpuState 
                 instruction={currentInstruction}
                 programCounter={vmState.cpu.programCounter[0]}
@@ -120,6 +121,7 @@ const Vm: FC<VmProps> = (props) => {
                 error={vmError}
                 onPlay={() => {console.log('play');}}
             />
+        </Paper>
         </Box>
     );
 };
