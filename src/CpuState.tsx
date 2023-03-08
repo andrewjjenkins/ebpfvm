@@ -38,6 +38,36 @@ const sliceHex = (x: Uint8Array, start: number, end: number): string => {
     return '0x' + padded.join('');
 };
 
+const stateItemStyle = {
+    padding: '1px',
+};
+
+const stateInnerItemStyle = {
+   flexWrap: 'nowrap',
+   justifyContent: 'center',
+   alignItems: 'center',
+   display: 'flex',
+   margin: '1px',
+   border: '2px solid grey',
+   borderRadius: '5px',
+};
+
+const codeStyle = {
+    fontFamily: 'Monospace',
+    margin: '1px',
+};
+
+const renderStateItem = (label: string, value: string) => {
+    return (
+        <Grid item xs={12} sm={6} key={label} sx={stateItemStyle}>
+            <Box sx={stateInnerItemStyle}>
+                <Typography sx={{minWidth: '3em'}}>{label}</Typography>{ }
+                <Typography component="pre" sx={codeStyle}>{value}</Typography>
+            </Box>
+        </Grid>
+    );
+};
+
 const CpuState: FC<CpuStateProps> = (props) => {
     const opcode = sliceHex(props.instruction.machineCode, 0, 1);
     const regs = sliceHex(props.instruction.machineCode, 1, 2);
@@ -46,20 +76,21 @@ const CpuState: FC<CpuStateProps> = (props) => {
 
     const registerGridItems: JSX.Element[] = [];
     for (let i = 0; i < 11; i++) {
-        registerGridItems.push((<Grid item xs={3} key={`r${i}_hdr`}>r{i}:</Grid>));
         const regVal = props.registers[i].toString(16).padStart(16, '0');
-        registerGridItems.push((<Grid item xs={9} key={`r${i}`}>0x{regVal}</Grid>));
+        registerGridItems.push(renderStateItem(`r${i}:`, `0x${regVal}`));
     }
+                    //Opcode: {opcode} Dst/Src: {regs} Offset: {offset} K: {k}</Grid>
 
     return (
         <Box>
             <Typography variant="h5" component="div">CPU State</Typography>
-            <Grid container spacing={2}>
-                <Grid item xs={3} key="inst_hdr">Instruction:</Grid>
-                <Grid item xs={9} key="inst">Opcode: {opcode} Dst/Src: {regs} Offset: {offset} K: {k}</Grid>
-                <Grid item xs={3} key="pc_hdr">Program Counter:</Grid>
-                <Grid item xs={9} key="pc">{props.programCounter}</Grid>
+            <Grid container spacing={0.5} sx={{padding: '10px'}}>
+                {renderStateItem("Opcode:", opcode)}
+                {renderStateItem("Dst/Src:", regs)}
+                {renderStateItem("Offset:", offset)}
+                {renderStateItem("K:", k)}
                 {registerGridItems}
+                {renderStateItem("Program Counter:", `${props.programCounter}`)}
             </Grid>
         </Box>
     );
