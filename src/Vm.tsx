@@ -18,6 +18,7 @@ import {
     useEffect,
     useState,
     useCallback,
+    useRef,
 } from 'react';
 import Box from '@mui/material/Box';
 import { 
@@ -37,9 +38,31 @@ interface VmProps {
 
 }
 
+// from https://stackoverflow.com/questions/53024496/state-not-updating-when-using-react-state-hook-within-setinterval/59274004#59274004
+const useInterval = (callback: Function, delay: number | null) => {
+    const intervalRef = useRef<number>();
+    const callbackRef = useRef(callback);
+
+    useEffect(() => {
+        callbackRef.current = callback;
+    }, [callback]);
+
+    useEffect(() => {
+        if (typeof delay === 'number') {
+        intervalRef.current = window.setInterval(() => callbackRef.current(), delay);
+
+        // Clear interval if the components is unmounted or the delay changes:
+        return () => window.clearInterval(intervalRef.current);
+        }
+    }, [delay]);
+
+    return intervalRef;
+};
+
 const Vm: FC<VmProps> = (props) => {
     const [vmState, setVmState] = useState<VmState | null>(null);
     const [vmError, setVmError] = useState<string | null>(null);
+    const [running, setRunning] = useState<boolean>(false);
     const [printkLines, setPrintkLines] = useState<string[]>([]);
 
     // This is a hack to force React to consider state to have changed and then
@@ -47,6 +70,21 @@ const Vm: FC<VmProps> = (props) => {
     // variable following functional paradigms (we update it in-place rather
     // than cloning).
     const [timeStep, setTimeStep] = useState(0);
+
+    useInterval(() => {
+        if (vmState === null) {
+            return;
+        }
+        const rc = vmState.step();
+        if (rc < 0) {
+            setVmError(`Error from VM: ${rc}`);
+            setRunning(false);
+        } else if (rc === 0) {
+            setVmError(`Program Terminated`);
+            setRunning(false);
+        }
+        setTimeStep(timeStep + 1);
+    }, running ? 400 : null);
 
     const addPrintkLine = useCallback((line: string) => {
         let newLines: string[] = [...printkLines, line];
@@ -60,6 +98,10 @@ const Vm: FC<VmProps> = (props) => {
         newVm(addPrintkLine).then((vm: VmState) => {setVmState(vm)});
     }, []);
 
+    useEffect(() => {
+        if (running) {}
+    })
+
     if (vmState === null) {
         return (
             <Box>
@@ -70,11 +112,13 @@ const Vm: FC<VmProps> = (props) => {
 
     const onReset = () => {
         vmState.cpu.programCounter[0] = 0;
+        setRunning(false);
         setPrintkLines([]);
         setVmError(null);
         setTimeStep(timeStep + 1);
     };
     const onStep = () => {
+        setRunning(false);
         const rc = vmState.step();
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
@@ -83,6 +127,9 @@ const Vm: FC<VmProps> = (props) => {
         }
         setTimeStep(timeStep + 1);
     };
+    const onPlay = () => {
+        setRunning(!running);
+    }
 
     const onSetMemoryValue = (offset: number, value: number) => {
         vmState.stack.mem[offset] = value;
@@ -136,8 +183,9 @@ const Vm: FC<VmProps> = (props) => {
             <StepController 
                 onReset={onReset}
                 onStep={onStep}
+                onPlay={onPlay}
+                running={running}
                 error={vmError}
-                onPlay={() => {console.log('play');}}
             />
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>

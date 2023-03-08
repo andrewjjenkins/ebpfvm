@@ -21,15 +21,20 @@ import Button from '@mui/material/Button';
 import ReplayIcon from '@mui/icons-material/Replay';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 
 interface StepControllerProps {
     onReset(): void;
     onStep(): void;
     onPlay(): void;
+    running: boolean;
     error: string | null;
 }
 
 const StepController: FC<StepControllerProps> = (props) => {
+    const playVariant = props.running ? "contained" : "outlined";
+    const playIcon = props.running ? (<PauseIcon />) : (<PlayArrowIcon />);
+
     return (
         <Box>
             <Button
@@ -43,9 +48,10 @@ const StepController: FC<StepControllerProps> = (props) => {
                 onClick={props.onStep}
             >Step</Button>
             <Button
-                variant="outlined"
-                startIcon={<PlayArrowIcon />}
+                variant={playVariant}
+                startIcon={playIcon}
                 onClick={props.onPlay}
+
             >Run</Button>
         </Box>
     );
