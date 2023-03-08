@@ -2,6 +2,11 @@ import { FunctionComponent as FC } from 'react';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
+const outputLabelStyle = {
+    fontSize: '1rem',
+    lineHeight: '1.6',
+};
+
 const printkTextStyle = {
     fontFamily: 'Monospace',
     fontSize: 'default',
@@ -48,7 +53,7 @@ const Printk: FC<PrintkProps> = (props) => {
     if (props.lines.length === 0) {
         return (
             <Box>
-                <Typography variant="h6" component="div">bpf_trace_printk() output:</Typography>
+                <Typography variant="h6" component="div" sx={outputLabelStyle}>bpf_trace_printk() output:</Typography>
                 <Box sx={printkEmptyBoxStyle}>
                     <Typography sx={{ display: "flex", weight: "light", fontStyle: "italic" }}>Empty</Typography>
                 </Box>

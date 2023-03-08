@@ -59,12 +59,22 @@ const useInterval = (callback: Function, delay: number | null) => {
     return intervalRef;
 };
 
+const getStackPointer = (vmState: VmState): number => {
+    const stackPointerBig = vmState.cpu.registers[10];
+    if (stackPointerBig > BigInt("0xffffffff")) {
+        throw new Error(`Stack pointer is too big: ${stackPointerBig}`);
+    }
+    const stackPointer = Number(stackPointerBig);
+    return stackPointer;
+};
+
 const Vm: FC<VmProps> = (props) => {
     const [vmState, setVmState] = useState<VmState | null>(null);
     const [vmError, setVmError] = useState<string | null>(null);
     const [running, setRunning] = useState<boolean>(false);
     const [terminated, setTerminated] = useState<boolean>(false);
     const [printkLines, setPrintkLines] = useState<string[]>([]);
+    const [hotAddress, setHotAddress] = useState<number>(0);
 
     // This is a hack to force React to consider state to have changed and then
     // re-render.  Necessary because vmState is not a well-behaved React state
@@ -77,6 +87,10 @@ const Vm: FC<VmProps> = (props) => {
             return;
         }
         const rc = vmState.step();
+        const newHotAddress = Number(vmState.cpu.hotAddress[0]);
+        if (newHotAddress !== 0) {
+            setHotAddress(Number(vmState.cpu.hotAddress[0]));
+        }
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
             setTerminated(true);
@@ -98,7 +112,17 @@ const Vm: FC<VmProps> = (props) => {
     }, [printkLines, setPrintkLines]);
 
     useEffect(() => {
-        newVm(addPrintkLine).then((vm: VmState) => {setVmState(vm)});
+        newVm(addPrintkLine).then((vm: VmState) => {
+            setVmState(vm);
+            let hotAddress: number = Number(vm.cpu.hotAddress[0]);
+            if (hotAddress === 0) {
+                // Set it to the stack pointer, that is likely where
+                // the first write will land, so this minimizes the
+                // chances we jolt the screen early in the program.
+                hotAddress = getStackPointer(vm);
+            }
+            setHotAddress(hotAddress);
+        });
     }, []);
 
     if (vmState === null) {
@@ -121,6 +145,10 @@ const Vm: FC<VmProps> = (props) => {
         if (terminated) { return; }
         setRunning(false);
         const rc = vmState.step();
+        const newHotAddress = Number(vmState.cpu.hotAddress[0]);
+        if (newHotAddress !== 0) {
+            setHotAddress(Number(vmState.cpu.hotAddress[0]));
+        }
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
             setTerminated(true);
@@ -140,9 +168,6 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     };
 
-    // FIXME
-    // const instructionIndex = vmState.cpu.instructionPointer / 8;
-    //const currentInstruction = vmState.program.instructions[instructionIndex];
     const machineCode = new Uint8Array(
         vmState.program.instructions.buffer,
         vmState.program.instructions.byteOffset + (vmState.cpu.programCounter[0] * 8),
@@ -152,12 +177,6 @@ const Vm: FC<VmProps> = (props) => {
         machineCode: machineCode,
     };
 
-    const stackPointerBig = vmState.cpu.registers[10];
-    if (stackPointerBig > BigInt("0xffffffff")) {
-        throw new Error(`Stack pointer is too big: ${stackPointerBig}`);
-    }
-    const stackPointer = Number(stackPointerBig);
-
     return (
         <Box>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
@@ -166,7 +185,7 @@ const Vm: FC<VmProps> = (props) => {
                 memory={vmState.stack.mem}
                 numWordsToShow={16}
                 startingAddress={vmState.stack.mem.byteOffset}
-                hotAddress={stackPointer}
+                hotAddress={hotAddress}
                 timeStep={timeStep}
                 onSetValue={onSetMemoryValue}
             />

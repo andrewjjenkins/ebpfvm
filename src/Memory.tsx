@@ -15,8 +15,13 @@
  */
 import {
     FunctionComponent as FC,
+    useState,
+    useEffect,
+    useRef,
 } from 'react';
 import Box from '@mui/material/Box';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Typography from '@mui/material/Typography';
 import HexEditor from './hex-editor';
 
@@ -30,16 +35,53 @@ interface MemoryProps {
     onSetValue?: (offset: number, value: number) => void;
 }
 
+const headerBoxStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    ".MuiFormControlLabel-root > .MuiTypography-root": {
+        fontSize: '0.8rem',
+        fontWeight: '400',
+    },
+};
+
+const COLUMN_COUNT = 0x10;
+const ROWS_TO_SHOW = 8;
+
 const Memory: FC<MemoryProps> = (props) => {
+    const [hotAddress, setHotAddress] = useState<number>(0);
+    const [autofocus, setAutofocus] = useState(true);
+    const hexEditor = useRef<any>(null);
+
     const startingAddress = props.startingAddress || 0;
-    //const hotAddress = props.hotAddress || 0;
+    const newHotAddress = props.hotAddress || 0;
+    useEffect(() => {
+        if (newHotAddress !== hotAddress) {
+            setHotAddress(newHotAddress);
+            if (hexEditor.current !== null && autofocus) {
+                const rowIndex = Math.floor(
+                    (newHotAddress - startingAddress) / COLUMN_COUNT
+                );
+                hexEditor.current.scrollToItem(rowIndex);
+            }
+        }
+    }, [newHotAddress, hotAddress, autofocus, startingAddress]);
+
+    const onAutofocusToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setAutofocus(event.target.checked);
+    };
 
     return (
         <Box>
-            <Typography variant="h5" component="div">{props.title}</Typography>
+            <Box sx={headerBoxStyle}>
+                <Typography variant="h5" component="div">{props.title}</Typography>
+                <FormControlLabel label={"Autofocus"} control={
+                    <Checkbox size="small" checked={autofocus} onChange={onAutofocusToggle}/>
+                }/>
+            </Box>
             <HexEditor
-                columns={0x10}
-                rows={0x08}
+                ref={hexEditor}
+                columns={COLUMN_COUNT}
+                rows={ROWS_TO_SHOW}
                 rowHeight={22}
                 data={props.memory}
                 memoryOffset={startingAddress}

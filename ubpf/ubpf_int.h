@@ -18,6 +18,7 @@
 #ifndef UBPF_INT_H
 #define UBPF_INT_H
 
+#include <stdint.h>
 #include <ubpf.h>
 #include "ebpf.h"
 
@@ -43,6 +44,7 @@ struct ubpf_vm
     void *stack;
     uint16_t pc;
     uint64_t return_value;
+    uint64_t hot_address;
     void (*printCb)(const char *fmt);
 };
 

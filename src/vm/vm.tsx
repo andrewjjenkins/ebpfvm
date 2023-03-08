@@ -22,9 +22,12 @@ import { HELLOWORLD_HEXBYTECODE } from './consts';
 const Ubpf = require('../generated/ubpf.js');
 
 interface UbpfModule extends EmscriptenModule {
+    // These are all the EMSCRIPTEN_KEEPALIVE functions in
+    // ubpf/ebpfvm_emscripten.c
     _ebpfvm_create_vm(logCallback: number): number;
     _ebpfvm_get_programcounter_address(): number;
     _ebpfvm_get_registers(): number;
+    _ebpfvm_get_hot_address(): number;
     _ebpfvm_get_memory(): number;
     _ebpfvm_get_memory_len(): number;
     _ebpfvm_get_stack(): number;
@@ -90,7 +93,9 @@ export const newVm = (printkLog: (s: string) => void) => {
         const vmProgramCounter = new Uint16Array(mod.HEAP8.buffer, vmProgramCounterOffset, 2);
         const vmRegistersOffset = mod._ebpfvm_get_registers();
         const vmRegisters = new BigInt64Array(mod.HEAP8.buffer, vmRegistersOffset, 8 * 11);
-        const cpu = new Cpu(vmProgramCounter, vmRegisters);
+        const vmHotAddressOffset = mod._ebpfvm_get_hot_address();
+        const vmHotAddress = new BigUint64Array(mod.HEAP8.buffer, vmHotAddressOffset, 1);
+        const cpu = new Cpu(vmProgramCounter, vmRegisters, vmHotAddress);
 
         const vmHeapOffset = mod._ebpfvm_get_memory();
         const vmHeapSize = mod._ebpfvm_get_memory_len();

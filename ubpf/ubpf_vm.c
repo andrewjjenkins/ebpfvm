@@ -233,7 +233,7 @@ i32(uint64_t x)
 #define IS_ALIGNED(x, a) (((uintptr_t)(x) & ((a)-1)) == 0)
 
 inline static uint64_t
-ubpf_mem_load(uint64_t address, size_t size)
+ubpf_mem_load(struct ubpf_vm *vm, uint64_t address, size_t size)
 {
     if (!IS_ALIGNED(address, size)) {
         // Fill the result with 0 to avoid leaking uninitialized memory.
@@ -241,6 +241,8 @@ ubpf_mem_load(uint64_t address, size_t size)
         memcpy(&value, (void*)address, size);
         return value;
     }
+
+    vm->hot_address = address;
 
     switch (size) {
     case 1:
@@ -257,12 +259,14 @@ ubpf_mem_load(uint64_t address, size_t size)
 }
 
 inline static void
-ubpf_mem_store(uint64_t address, uint64_t value, size_t size)
+ubpf_mem_store(struct ubpf_vm *vm, uint64_t address, uint64_t value, size_t size)
 {
     if (!IS_ALIGNED(address, size)) {
         memcpy((void*)address, &value, size);
         return;
     }
+
+    vm->hot_address = address;
 
     switch (size) {
     case 1:
@@ -505,53 +509,53 @@ do {                                                                            
 
     case EBPF_OP_LDXW:
         BOUNDS_CHECK_LOAD(4);
-        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 4);
+        reg[inst.dst] = ubpf_mem_load(vm, reg[inst.src] + inst.offset, 4);
         break;
     case EBPF_OP_LDXH:
         BOUNDS_CHECK_LOAD(2);
-        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 2);
+        reg[inst.dst] = ubpf_mem_load(vm, reg[inst.src] + inst.offset, 2);
         break;
     case EBPF_OP_LDXB:
         BOUNDS_CHECK_LOAD(1);
-        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 1);
+        reg[inst.dst] = ubpf_mem_load(vm, reg[inst.src] + inst.offset, 1);
         break;
     case EBPF_OP_LDXDW:
         BOUNDS_CHECK_LOAD(8);
-        reg[inst.dst] = ubpf_mem_load(reg[inst.src] + inst.offset, 8);
+        reg[inst.dst] = ubpf_mem_load(vm, reg[inst.src] + inst.offset, 8);
         break;
 
     case EBPF_OP_STW:
         BOUNDS_CHECK_STORE(4);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 4);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, inst.imm, 4);
         break;
     case EBPF_OP_STH:
         BOUNDS_CHECK_STORE(2);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 2);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, inst.imm, 2);
         break;
     case EBPF_OP_STB:
         BOUNDS_CHECK_STORE(1);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 1);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, inst.imm, 1);
         break;
     case EBPF_OP_STDW:
         BOUNDS_CHECK_STORE(8);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, inst.imm, 8);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, inst.imm, 8);
         break;
 
     case EBPF_OP_STXW:
         BOUNDS_CHECK_STORE(4);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 4);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, reg[inst.src], 4);
         break;
     case EBPF_OP_STXH:
         BOUNDS_CHECK_STORE(2);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 2);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, reg[inst.src], 2);
         break;
     case EBPF_OP_STXB:
         BOUNDS_CHECK_STORE(1);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 1);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, reg[inst.src], 1);
         break;
     case EBPF_OP_STXDW:
         BOUNDS_CHECK_STORE(8);
-        ubpf_mem_store(reg[inst.dst] + inst.offset, reg[inst.src], 8);
+        ubpf_mem_store(vm, reg[inst.dst] + inst.offset, reg[inst.src], 8);
         break;
 
     case EBPF_OP_LDDW:
