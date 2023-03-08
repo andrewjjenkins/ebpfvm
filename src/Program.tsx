@@ -43,7 +43,11 @@ const Program: FC<ProgramProps> = (props) => {
 
     for (let i = 0; i < numInstructions; i++) {
         const addr = i*8;
-        const active = (props.programCounter * 8 === addr);
+        let active = (props.programCounter * 8 === addr);
+        if (disassembled[i] === "" && (props.programCounter + 1) * 8 === addr) {
+            // This is the extra word for a previous "lddw"
+            active = true;
+        }
         const offset = props.instructions.byteOffset + addr;
         const instView = new Uint8Array(props.instructions.buffer, offset, 8);
         let inst = "";
