@@ -71,7 +71,7 @@ const Program: FC<ProgramProps> = (props) => {
     return (
         <Box>
             <Typography variant="h5" component="div">BPF Source Code</Typography>
-            <TableContainer sx={{width: "50%"}}>
+            <TableContainer sx={{width: "100%"}}>
                 <Table sx={{style}} size="medium" aria-label="Instructions">
                     <TableBody>
                         {rows}
