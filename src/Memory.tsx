@@ -44,7 +44,6 @@ const headerBoxStyle = {
     },
 };
 
-const COLUMN_COUNT = 0x10;
 const ROWS_TO_SHOW = 8;
 
 const Memory: FC<MemoryProps> = (props) => {
@@ -59,10 +58,7 @@ const Memory: FC<MemoryProps> = (props) => {
         if (newHotAddress !== hotAddress) {
             setHotAddress(newHotAddress);
             if (hexEditor.current !== null && autofocus) {
-                const rowIndex = Math.floor(
-                    (newHotAddress - startingAddress) / COLUMN_COUNT
-                );
-                hexEditor.current.scrollToItem(rowIndex);
+                hexEditor.current.scrollToByte(newHotAddress - startingAddress);
             }
         }
     }, [newHotAddress, hotAddress, autofocus, startingAddress]);
