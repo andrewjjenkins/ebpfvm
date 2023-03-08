@@ -174,6 +174,15 @@ theme = {
         },
       },
     },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: 'rgb(0, 155, 229, 0.4)',
+          }
+        }
+      }
+    }
   },
 };
 
