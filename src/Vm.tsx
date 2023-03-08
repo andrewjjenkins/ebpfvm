@@ -63,6 +63,7 @@ const Vm: FC<VmProps> = (props) => {
     const [vmState, setVmState] = useState<VmState | null>(null);
     const [vmError, setVmError] = useState<string | null>(null);
     const [running, setRunning] = useState<boolean>(false);
+    const [terminated, setTerminated] = useState<boolean>(false);
     const [printkLines, setPrintkLines] = useState<string[]>([]);
 
     // This is a hack to force React to consider state to have changed and then
@@ -78,9 +79,11 @@ const Vm: FC<VmProps> = (props) => {
         const rc = vmState.step();
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
+            setTerminated(true);
             setRunning(false);
         } else if (rc === 0) {
             setVmError(`Program Terminated`);
+            setTerminated(true);
             setRunning(false);
         }
         setTimeStep(timeStep + 1);
@@ -98,10 +101,6 @@ const Vm: FC<VmProps> = (props) => {
         newVm(addPrintkLine).then((vm: VmState) => {setVmState(vm)});
     }, []);
 
-    useEffect(() => {
-        if (running) {}
-    })
-
     if (vmState === null) {
         return (
             <Box>
@@ -115,19 +114,24 @@ const Vm: FC<VmProps> = (props) => {
         setRunning(false);
         setPrintkLines([]);
         setVmError(null);
+        setTerminated(false);
         setTimeStep(timeStep + 1);
     };
     const onStep = () => {
+        if (terminated) { return; }
         setRunning(false);
         const rc = vmState.step();
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
+            setTerminated(true);
         } else if (rc === 0) {
             setVmError(`Program Terminated`);
+            setTerminated(true);
         }
         setTimeStep(timeStep + 1);
     };
     const onPlay = () => {
+        if (terminated) { return; }
         setRunning(!running);
     }
 
@@ -185,6 +189,7 @@ const Vm: FC<VmProps> = (props) => {
                 onStep={onStep}
                 onPlay={onPlay}
                 running={running}
+                terminated={terminated}
                 error={vmError}
             />
         </Paper>

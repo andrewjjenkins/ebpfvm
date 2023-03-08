@@ -28,12 +28,14 @@ interface StepControllerProps {
     onStep(): void;
     onPlay(): void;
     running: boolean;
+    terminated: boolean;
     error: string | null;
 }
 
 const StepController: FC<StepControllerProps> = (props) => {
     const playVariant = props.running ? "contained" : "outlined";
     const playIcon = props.running ? (<PauseIcon />) : (<PlayArrowIcon />);
+    const playingDisabled = props.terminated;
 
     return (
         <Box>
@@ -46,12 +48,13 @@ const StepController: FC<StepControllerProps> = (props) => {
                 variant="outlined"
                 startIcon={<ArrowForwardIcon />}
                 onClick={props.onStep}
+                disabled={playingDisabled}
             >Step</Button>
             <Button
                 variant={playVariant}
                 startIcon={playIcon}
                 onClick={props.onPlay}
-
+                disabled={playingDisabled}
             >Run</Button>
         </Box>
     );
