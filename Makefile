@@ -8,6 +8,7 @@ public/ubpf.wasm: build_vm/ubpf.wasm
 	cp build_vm/ubpf.wasm public/ubpf.wasm
 
 src/generated/ubpf.js: build_vm/ubpf.wasm
+	mkdir -p src/generated/
 	cp build_vm/ubpf.js src/generated/ubpf.js
 
 # This target produces both ubpf.wasm and ubpf.js
@@ -20,11 +21,9 @@ build_vm/ubpf.wasm: $(UBPF_DEPS) emsdk/upstream/emscripten/emcc
 	sed -i '1 i\ /* eslint-disable */' build_vm/ubpf.js
 
 start: public/ubpf.wasm src/generated/ubpf.js
-	mkdir -p src/generated/
 	npm start
 
 build: public/ubpf.wasm src/generated/ubpf.js
-	mkdir -p src/generated/
 	npm run build
 
 emsdk/upstream/emscripten/emcc:
