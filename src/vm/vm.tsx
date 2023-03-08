@@ -59,6 +59,16 @@ export class Vm {
     step() {
         return this.ubpfModule._ebpfvm_exec_step();
     }
+
+    reset() {
+        this.cpu.programCounter[0] = 0;
+        for (let i = 0; i < this.memory.mem32.length; i++) {
+            this.memory.mem32[i] = 0;
+        }
+        for (let i = 0; i < this.stack.mem32.length; i++) {
+            this.stack.mem32[i] = 0;
+        }
+    }
 }
 
 export const newVm = (printkLog: (s: string) => void) => {

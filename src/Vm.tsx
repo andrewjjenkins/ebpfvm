@@ -110,7 +110,7 @@ const Vm: FC<VmProps> = (props) => {
     }
 
     const onReset = () => {
-        vmState.cpu.programCounter[0] = 0;
+        vmState.reset();
         setRunning(false);
         setPrintkLines([]);
         setVmError(null);
