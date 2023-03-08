@@ -70,6 +70,7 @@ export interface AutoSizeHexEditorProps extends BaseHexEditorProps {
   byteWidth?: number,
   separatorByteWidth?: number,
   columns?: number,
+  columnLinebreakInterval?: number,
   gutterWidth?: number,
   height?: number,
   labelWidth?: number,

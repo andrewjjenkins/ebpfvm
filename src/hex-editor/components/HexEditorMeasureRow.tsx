@@ -102,8 +102,7 @@ const HexEditorMeasureRow = ({
     }
     if (measureSeparatorByteRef.current) {
       const separatorByteRect = measureSeparatorByteRef.current.getBoundingClientRect();
-      separatorByteWidth = 15;
-      rowHeight = Math.max(rowHeight, separatorByteRect.height);
+      separatorByteWidth = separatorByteRect.width;
     }
     if (measureLabelRef.current) {
       const labelRect = measureLabelRef.current.getBoundingClientRect();
@@ -123,6 +122,8 @@ const HexEditorMeasureRow = ({
       });
     }
   }, [onMeasure]);
+
+  const separatorByteClassNames = {...classNames, selector: true};
 
   return (
     <div className={className} style={style || undefined} ref={measureContainerRef}>
@@ -146,7 +147,7 @@ const HexEditorMeasureRow = ({
         value={value}
       />
       <HexByteValue
-        className={classNames.separator}
+        className={classNames.byte + " separator"}
         classNames={classNames}
         ref={measureSeparatorByteRef}
         style={{ width: explicitByteWidth, height: explicitRowHeight, ...styles.byte }}

@@ -50,6 +50,7 @@ const ROWS_TO_SHOW = 8;
 const Memory: FC<MemoryProps> = (props) => {
     const [hotAddress, setHotAddress] = useState<number>(0);
     const [autofocus, setAutofocus] = useState(true);
+    const [showAscii, setShowAscii] = useState(true);
     const hexEditor = useRef<any>(null);
 
     const startingAddress = props.startingAddress || 0;
@@ -69,21 +70,31 @@ const Memory: FC<MemoryProps> = (props) => {
     const onAutofocusToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
         setAutofocus(event.target.checked);
     };
+    const onShowAsciiToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setShowAscii(event.target.checked);
+    };
+
 
     return (
         <Box>
             <Box sx={headerBoxStyle}>
                 <Typography variant="h5" component="div">{props.title}</Typography>
-                <FormControlLabel label={"Autofocus"} control={
-                    <Checkbox size="small" checked={autofocus} onChange={onAutofocusToggle}/>
-                }/>
+                <Box>
+                    <FormControlLabel label={"Autofocus"} control={
+                        <Checkbox size="small" checked={autofocus} onChange={onAutofocusToggle}/>
+                    }/>
+                    <FormControlLabel label={"ASCII"} control={
+                        <Checkbox size="small" checked={showAscii} onChange={onShowAsciiToggle}/>
+                    }/>
+                </Box>
             </Box>
             <HexEditor
                 ref={hexEditor}
-                columns={COLUMN_COUNT}
                 rows={ROWS_TO_SHOW}
+                columnLinebreakInterval={8}
                 rowHeight={22}
                 data={props.memory}
+                showAscii={showAscii}
                 memoryOffset={startingAddress}
                 nonce={props.timeStep}
                 showRowLabels={true}

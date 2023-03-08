@@ -18,6 +18,7 @@ import { formatHex } from '../utils';
 
 import HexEditor from './HexEditor';
 import HexEditorMeasureRow from './HexEditorMeasureRow';
+import { ViewColumnOutlined } from '@mui/icons-material';
 
 interface AutoSizeHexEditorState {
   asciiWidth: number,
@@ -155,6 +156,8 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
           // Horizontal
           let width = explicitWidth == null ? autoSizerWidth : explicitWidth;
           let columns = explicitColumns;
+          const separatorByteExtraWidth =
+            Math.max(0, (state.separatorByteWidth - state.byteWidth));
           if (columns != null && width == null) {
             // Calculate width from the columns and component measurements
             width = state.scrollbarWidth;
@@ -162,8 +165,6 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
               width += state.labelWidth + state.gutterWidth;
             }
             width += columns * state.byteWidth;
-            const separatorByteExtraWidth =
-              Math.max(0, (state.byteWidth - state.separatorByteWidth));
             width += Math.floor(columns / 8) * separatorByteExtraWidth;
             if (props.showAscii) {
               width += (columns * state.asciiWidth) + state.gutterWidth;
@@ -182,6 +183,34 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
               ? state.asciiWidth + state.byteWidth
               : state.byteWidth;
             columns = Math.max(1, Math.floor(remainingWidth / columnMinimumWidth));
+
+            // Don't orphan columns.
+            if (props.columnLinebreakInterval) {
+              const unorphanedColumns = props.columnLinebreakInterval
+                * Math.floor(columns / props.columnLinebreakInterval);
+              if (unorphanedColumns > 0) {
+                // If the number of columns is smaller than the linebreak interval,
+                // we can't do any better.  Else, choose not to orphan any cols.
+                columns = unorphanedColumns;
+              }
+            }
+            remainingWidth -= columns * columnMinimumWidth;
+
+            // If we have separator bytes, they are consuming extra width.
+            const separatorColumnCount = Math.floor(columns / 8);
+            let preadjustedRemainingWidth = remainingWidth -
+              separatorColumnCount * separatorByteExtraWidth;
+            //debugger;
+            if (preadjustedRemainingWidth < 0) {
+              // It's assumed that you won't need to drop more than one
+              // set of columns; this is true unless your separator byte
+              // width is larger than the size of an entire block of bytes
+              if (props.columnLinebreakInterval) {
+                columns -= props.columnLinebreakInterval
+              } else {
+                columns -= 1;
+              }
+            }
           } else {
             console.warn('Horizontal size inference failed!');
             columns = 1;
