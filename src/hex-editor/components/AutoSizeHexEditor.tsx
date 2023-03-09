@@ -200,7 +200,6 @@ const AutoSizeHexEditor: React.RefForwardingComponent<HexEditorHandle, AutoSizeH
             const separatorColumnCount = Math.floor(columns / 8);
             let preadjustedRemainingWidth = remainingWidth -
               separatorColumnCount * separatorByteExtraWidth;
-            //debugger;
             if (preadjustedRemainingWidth < 0) {
               // It's assumed that you won't need to drop more than one
               // set of columns; this is true unless your separator byte

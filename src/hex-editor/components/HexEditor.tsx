@@ -357,7 +357,6 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
   const scrollToByte = useCallback((byteOffset: number, align?: Align) => {
     if (rowListRef.current) {
       const rowIndex = Math.floor(byteOffset / columns);
-      debugger;
       rowListRef.current.scrollToItem(rowIndex, align);
     }
   }, []);
