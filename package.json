@@ -34,9 +34,10 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "node tools/generateParser.js && react-scripts start",
-    "build": "node tools/generateParser.js && react-scripts build",
-    "test": "node tools/generateParser.js && react-scripts test",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "build-parser": "node tools/generateParser.js",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

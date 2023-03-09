@@ -20,10 +20,13 @@ build_vm/ubpf.wasm: $(UBPF_DEPS) emsdk/upstream/emscripten/emcc
 	"
 	sed -i '1 i\ /* eslint-disable */' build_vm/ubpf.js
 
-start: public/ubpf.wasm src/generated/ubpf.js
+src/generated/ebpf-assembler.js: src/vm/parser/ebpf.jison
+	npm run build-parser
+
+start: public/ubpf.wasm src/generated/ubpf.js src/generated/ebpf-assembler.js
 	npm start
 
-build: public/ubpf.wasm src/generated/ubpf.js
+build: public/ubpf.wasm src/generated/ubpf.js src/generated/ebpf-assembler.js
 	npm run build
 
 emsdk/upstream/emscripten/emcc:

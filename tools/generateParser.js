@@ -21,7 +21,7 @@ const jisonCli = require('jison/lib/cli');
 
 const parserFile = "src/vm/parser/ebpf.jison";
 const parserName = "ebpf";
-const parserOutFile = "src/generated/ebpf.js";
+const parserOutFile = "src/generated/ebpf-assembler.js";
 
 const raw = fs.readFileSync(path.normalize(parserFile), "utf8");
 
