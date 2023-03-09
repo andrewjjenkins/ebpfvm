@@ -22,6 +22,7 @@ import {
 import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import HexEditor from './hex-editor';
 
@@ -69,6 +70,8 @@ const Memory: FC<MemoryProps> = (props) => {
     const onShowAsciiToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
         setShowAscii(event.target.checked);
     };
+    const autofocusTooltip = "Automatically scroll to the last read/written address";
+    const asciiTooltip = "Also show ASCII representation";
 
 
     return (
@@ -76,12 +79,16 @@ const Memory: FC<MemoryProps> = (props) => {
             <Box sx={headerBoxStyle}>
                 <Typography variant="h5" component="div">{props.title}</Typography>
                 <Box>
-                    <FormControlLabel label={"Autofocus"} control={
-                        <Checkbox size="small" checked={autofocus} onChange={onAutofocusToggle}/>
-                    }/>
-                    <FormControlLabel label={"ASCII"} control={
-                        <Checkbox size="small" checked={showAscii} onChange={onShowAsciiToggle}/>
-                    }/>
+                    <Tooltip title={autofocusTooltip}>
+                        <FormControlLabel label={"Autofocus"} control={
+                            <Checkbox size="small" checked={autofocus} onChange={onAutofocusToggle}/>
+                        }/>
+                    </Tooltip>
+                    <Tooltip title={asciiTooltip}>
+                        <FormControlLabel label={"ASCII"} control={
+                            <Checkbox size="small" checked={showAscii} onChange={onShowAsciiToggle}/>
+                        }/>
+                    </Tooltip>
                 </Box>
             </Box>
             <HexEditor
@@ -93,6 +100,7 @@ const Memory: FC<MemoryProps> = (props) => {
                 showAscii={showAscii}
                 memoryOffset={startingAddress}
                 nonce={props.timeStep}
+                showColumnLabels={true}
                 showRowLabels={true}
                 inlineStyles={{}}
                 onSetValue={props.onSetValue}

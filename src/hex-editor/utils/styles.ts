@@ -166,6 +166,10 @@ export default css`
       background-color: ${hexEditorTheme('colorBackgroundLabelCurrent')};
       color: ${hexEditorTheme('colorTextLabelCurrent')};
     }
+
+    &.separator {
+      padding-left: ${hexEditorTheme('separatorBytePaddingX')};
+    }
   }
 
   .asciiHeader {
