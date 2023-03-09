@@ -123,8 +123,6 @@ const HexEditorMeasureRow = ({
     }
   }, [onMeasure]);
 
-  const separatorByteClassNames = {...classNames, selector: true};
-
   return (
     <div className={className} style={style || undefined} ref={measureContainerRef}>
       <HexEditorGutter

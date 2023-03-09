@@ -359,7 +359,7 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
       const rowIndex = Math.floor(byteOffset / columns);
       rowListRef.current.scrollToItem(rowIndex, align);
     }
-  }, []);
+  }, [columns]);
 
   useImperativeHandle(ref, () => ({
     blur,
@@ -369,7 +369,7 @@ const HexEditor: React.RefForwardingComponent<HexEditorHandle, HexEditorProps> =
     scrollToByte,
     setSelectionRange,
     setValue,
-  }), [blur, focus, scrollTo, scrollToItem, setSelectionRange, setValue]);
+  }), [blur, focus, scrollTo, scrollToItem, scrollToByte, setSelectionRange, setValue]);
 
   const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     setState({ isFocused: false });

@@ -18,7 +18,6 @@ import { formatHex } from '../utils';
 
 import HexEditor from './HexEditor';
 import HexEditorMeasureRow from './HexEditorMeasureRow';
-import { ViewColumnOutlined } from '@mui/icons-material';
 
 interface AutoSizeHexEditorState {
   asciiWidth: number,
