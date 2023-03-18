@@ -34,6 +34,12 @@ const stringifyRelative = (base: string, offset: number) => {
     }
 }
 
+const toImm = (n: number) => {
+    // UBPF's disassembler emits "%#12345" but the assembler only
+    // accepts "12345".  We'll match the assembler.
+    return `${n}`;
+};
+
 export const disassembleInstruction = (code: Uint8Array, offset: number) => {
     const instClass = c.EBPF_CLASS(code[offset]);
     const dst_reg = code[offset + 1] & 0xf;
@@ -57,7 +63,7 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
             opName = source === c.InstructionSource.EBPF_SRC_REG ? "be" : "le";
             return `${opName}${imm} r${dst_reg}`;
         } else if (source === 0) {
-            return `${opName} r${dst_reg}, %#${imm}`;
+            return `${opName} r${dst_reg}, ${toImm(imm)}`;
         } else {
             return `${opName} r${dst_reg}, r${src_reg}`;
         }
@@ -73,12 +79,12 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
             if (imm < c.EBPF_HELPER_FUNC_NAMES.length) {
                 return `${opName} ${c.EBPF_HELPER_FUNC_NAMES[imm]}`;
             } else {
-                return `${opName} ${imm}`;
+                return `${opName} ${toImm(imm)}`;
             }
         } else if (op === c.InstructionJumps.EBPF_JA) {
             return `${opName} ${offset}`;
         } else if (source === 0) {
-            return `${opName} r${dst_reg}, %#${imm}, ${offset}`;
+            return `${opName} r${dst_reg}, ${toImm(imm)}, ${offset}`;
         } else {
             return `${opName} r${dst_reg}, r${src_reg}, ${offset}`;
         }
@@ -101,7 +107,7 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
             let bigImm = BigInt(highImm);
             bigImm <<= BigInt(32);
             bigImm |= BigInt(imm);
-            return `${mnem} r${dst_reg}, %#${bigImm}`;
+            return `${mnem} r${dst_reg}, ${bigImm}`;
         } else if (code[offset] === 0x00) {
             // This is the second instruction of a previous lddw
             return "";
@@ -110,7 +116,7 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
             return `${mnem} r${dst_reg}, ${arg2}`;
         } else if (instClass === c.InstructionClass.EBPF_CLS_ST) {
             const arg1 = stringifyRelative(`r${dst_reg}`, off);
-            return `${mnem} ${arg1}, %#${imm}`;
+            return `${mnem} ${arg1}, ${toImm(imm)}`;
         } else if (instClass === c.InstructionClass.EBPF_CLS_STX) {
             const arg1 = stringifyRelative(`r${dst_reg}`, off);
             return `${mnem} ${arg1}, r${src_reg}`;

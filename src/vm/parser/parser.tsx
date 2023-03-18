@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 import { Parser } from '../../generated/ebpf-assembler';
-import { OperandsModes } from './consts';
+import { InstructionOpMode } from '../consts';
 
 export interface ParsedInstruction {
-    mode: OperandsModes;
-    opcode: string;
+    mode: InstructionOpMode;
+    opname: string;
     lineNumber: number;
     k?: number;
     register?: string;
@@ -40,7 +40,7 @@ export const parse = (prog: string): ParseResult => {
         labels: {},
         current: {},
         instructions: [],
-        OperandsModes: OperandsModes,
+        InstructionOpMode: InstructionOpMode,
         currentLine: 1,
     };
     const out = p.parse(prog);

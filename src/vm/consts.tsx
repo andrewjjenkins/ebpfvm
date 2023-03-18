@@ -63,9 +63,10 @@ export const EBPF_SIZE = (x: InstructionOpSize) => (x & 0x18);
 
 export enum InstructionOpMode {
     EBPF_MODE_IMM = 0x00,
-    /*BPF_ABS = 0x20,
-    BPF_IND = 0x40,*/
+    EBPF_MODE_ABS = 0x20,
+    EBPF_MODE_IND = 0x40,
     EBPF_MODE_MEM = 0x60,
+    // EBPF_MODE_XADD = 0xc0,  // Unsupported
 }
 export const EBPF_MODE = (x: InstructionOpMode) => (x & 0xe0);
 
