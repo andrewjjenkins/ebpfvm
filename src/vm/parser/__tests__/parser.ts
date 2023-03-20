@@ -355,6 +355,17 @@ it("parses jsle", () => expectSingleInstruction(
     },
 ));
 
+it("parses jsle32", () => expectSingleInstruction(
+    "jsle32 r2, 0x44, +20\n",
+    {
+        opname: "jsle32",
+        source: "",
+        dest: "r2",
+        offset: 20,
+        imm: BigInt(0x44),
+    },
+));
+
 it("parses call immediate", () => expectSingleInstruction(
     "call 6\n",
     {
@@ -478,7 +489,16 @@ it("rejects neg32 with immediate", () =>
 
 it("rejects neg32 with register", () => 
     expect(() => parse("neg32 r4, r10\n")).toThrow()
-)
+);
+
+it("rejects ja32", () =>
+    expect(() => parse("ja32\n")).toThrow()
+);
+
+it("rejects ja with register", () =>
+    expect(() => parse("ja r0\n")).toThrow()
+);
+
 
 it("parses endians", () => {
     ["le16", "le32", "le64", "be16", "be32", "be64"].forEach((op: string) => {

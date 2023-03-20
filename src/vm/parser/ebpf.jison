@@ -57,6 +57,18 @@
 "jslt" return "jslt";
 "jsle" return "jsle";
 "ja" return "ja";
+"jeq32" return "jeq32";
+"jneq32" return "jneq32";  // synonym for jne32
+"jne32" return "jne32";
+"jlt32" return "jlt32";
+"jle32" return "jle32";
+"jgt32" return "jgt32";
+"jge32" return "jge32";
+"jset32" return "jset32";
+"jsgt32" return "jsgt32";
+"jsge32" return "jsge32";
+"jslt32" return "jslt32";
+"jsle32" return "jsle32";
 "call" return "call";
 "exit" return "exit";
 
@@ -165,6 +177,18 @@ statement
   | jslt_statement { yy.current.opname = "jslt"; }
   | jsle_statement { yy.current.opname = "jsle"; }
   | ja_statement { yy.current.opname = "ja"; }
+  | jeq32_statement { yy.current.opname = "jeq32"; }
+  | jneq32_statement { yy.current.opname = "jne32"; }  // synonym for jne
+  | jne32_statement { yy.current.opname = "jne32"; }
+  | jlt32_statement { yy.current.opname = "jlt32"; }
+  | jle32_statement { yy.current.opname = "jle32"; }
+  | jgt32_statement { yy.current.opname = "jgt32"; }
+  | jge32_statement { yy.current.opname = "jge32"; }
+  | jset32_statement { yy.current.opname = "jset32"; }
+  | jsgt32_statement { yy.current.opname = "jsgt32"; }
+  | jsge32_statement { yy.current.opname = "jsge32"; }
+  | jslt32_statement { yy.current.opname = "jslt32"; }
+  | jsle32_statement { yy.current.opname = "jsle32"; }
   | call_statement { yy.current.opname = "call"; }
   | exit_statement { yy.current.opname = "exit"; }
   | add_statement { yy.current.opname = "add"; }
@@ -232,6 +256,18 @@ jsgt_statement: jsgt operands_branch_imm | jsgt operands_branch_reg;
 jsge_statement: jsge operands_branch_imm | jsge operands_branch_reg;
 jslt_statement: jslt operands_branch_imm | jslt operands_branch_reg;
 jsle_statement: jsle operands_branch_imm | jsle operands_branch_reg;
+jeq32_statement: jeq32 operands_branch_imm | jeq32 operands_branch_reg;
+jgt32_statement: jgt32 operands_branch_imm | jgt32 operands_branch_reg;
+jge32_statement: jge32 operands_branch_imm | jge32 operands_branch_reg;
+jlt32_statement: jlt32 operands_branch_imm | jlt32 operands_branch_reg;
+jle32_statement: jle32 operands_branch_imm | jle32 operands_branch_reg;
+jset32_statement: jset32 operands_branch_imm | jset32 operands_branch_reg;
+jne32_statement: jne32 operands_branch_imm | jne32 operands_branch_reg;
+jneq32_statement: jneq32 operands_branch_imm | jneq32 operands_branch_reg; //synonym for jne
+jsgt32_statement: jsgt32 operands_branch_imm | jsgt32 operands_branch_reg;
+jsge32_statement: jsge32 operands_branch_imm | jsge32 operands_branch_reg;
+jslt32_statement: jslt32 operands_branch_imm | jslt32 operands_branch_reg;
+jsle32_statement: jsle32 operands_branch_imm | jsle32 operands_branch_reg;
 call_statement: call operands_imm | call operands_label;
 exit_statement: exit operands_none;
 

@@ -16,22 +16,6 @@
 export const DEFAULT_MEMORY_INIT = "hello world";
 export const DEFAULT_MEMORY_MIN_SIZE = 128;
 
-/* FIXME: Use this one once symbols are supported.
-export const DEFAULT_PROGRAM = [
-    '     ldh [12]',
-    '     jeq #ETHERTYPE_IP, L1, L2',
-    'L1:  ret #TRUE',
-    'L2:  ret #0',
-];
-*/
-
-export const DEFAULT_PROGRAM = [
-    '     ldh [12]',
-    '     jeq #0x806, L1, L2',
-    'L1:  ret #-1',
-    'L2:  ret #0',
-];
-
 export const HELLOWORLD_HEXBYTECODE =
 "b70100006c210a00631af8ff00000000180100006c6f6e65000000002063" +
 "616c7b1af0ff0000000018010000206120730000000079735f637b1ae8ff" +
@@ -40,6 +24,29 @@ export const HELLOWORLD_HEXBYTECODE =
 "000000006f2c20577b1ad0ff00000000bfa100000000000007010000d0ff" +
 "ffffb70200002c0000008500000006000000b70000000000000095000000" +
 "00000000";
+
+
+// FIXME: "call 6" should be "call trace_printk" once
+// symbol resolution works.
+export const HELLOWORLD_SOURCE = `\
+mov r1, 663916
+stxw [r10-8], r1
+lddw r1, 7809632219628990316
+stxdw [r10-16], r1
+lddw r1, 7160568898002116896
+stxdw [r10-24], r1
+lddw r1, 7235424366176003442
+stxdw [r10-32], r1
+lddw r1, 7298118523944727151
+stxdw [r10-40], r1
+lddw r1, 6278066737626506568
+stxdw [r10-48], r1
+mov r1, r10
+add r1, -48
+mov r2, 44
+call 6
+mov r0, 0
+exit`;
 
 export enum InstructionClass {
     EBPF_CLS_LD = 0x00,
@@ -70,11 +77,19 @@ export enum InstructionOpMode {
 }
 export const EBPF_MODE = (x: InstructionOpMode) => (x & 0xe0);
 
+// ALU ops use this bit to indicate the source operand,
+// except for endianness ALU ops, that use it to indicate
+// big/little.
 export enum InstructionSource {
     EBPF_SRC_IMM = 0x00,
     EBPF_SRC_REG = 0x08,
 }
 export const EBPF_SRC = (x: InstructionSource) => (x & 0x08);
+export enum InstructionEndianness {
+    EBPF_ENDIAN_LE = 0x00,
+    EBPF_ENDIAN_BE = 0x08,
+}
+export const EBPF_ENDIANNESS = (x: InstructionEndianness) => (x & 0x08);
 
 export enum InstructionOp {
     EBPF_ADD = 0x00,

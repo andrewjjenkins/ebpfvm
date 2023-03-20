@@ -61,7 +61,7 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
         if (op === c.InstructionOp.EBPF_NEG) {
             return `${opName} r${dst_reg}`;
         } else if (op === c.InstructionOp.EBPF_ENDIAN) {
-            opName = source === c.InstructionSource.EBPF_SRC_REG ? "be" : "le";
+            opName = source === c.InstructionEndianness.EBPF_ENDIAN_BE ? "be" : "le";
             return `${opName}${imm} r${dst_reg}`;
         } else if (source === 0) {
             return `${opName} r${dst_reg}, ${toImm(imm)}`;
@@ -161,6 +161,7 @@ const packer = (f: Emitter) => {
 type SingleEncoder = (i: ResolvedInstruction) => Uint8Array;
 type Encoder = { [key: string]: SingleEncoder };
 type Emitter = (i: ResolvedInstruction) => c.UnpackedInstruction;
+type Validator = (i: ResolvedInstruction) => void;
 
 const encodeRegister = (r: string): number => {
     if (r === "") {
@@ -174,11 +175,37 @@ const encodeRegister = (r: string): number => {
     return parseInt(r.slice(1));
 };
 
+
+const assertImmediateZero: Validator = (i) => {
+    if (i.imm !== BigInt(0)) {
+        throw new Error(`Immediate is ${i.imm}, should be 0 for ${i.opname}`);
+    }
+};
+const assertOffsetZero: Validator = (i) => {
+    if (i.offset !== 0) {
+        throw new Error(`Offset is ${i.imm}, should be 0 for ${i.opname}`);
+    }
+};
+const assertNoSource: Validator = (i) => {
+    if (i.source !== "") {
+        throw new Error(`Source register is ${i.source}, should not be specified for ${i.opname}`);
+    }
+};
+const assertNoDest: Validator = (i) => {
+    if (i.dest !== "") {
+        throw new Error(`Dest register is ${i.dest}, should not be specified for ${i.opname}`);
+    }
+};
+const assert32BitImmediate: Validator = (i) => {
+    if (i.imm > BigInt("0xffffffff")) {
+        throw new Error(`Immediate ${i.imm} too large for ${i.opname}`);
+    }
+};
+
+
 const loadxEmitter = (size: c.InstructionOpSize) => {
     const emitter: Emitter = (i) => {
-        if (i.imm !== BigInt(0)) {
-            throw new Error(`Immediate is ${i.imm}, should be 0 for ${i.opname}`);
-        }
+        assertImmediateZero(i);
         const unpacked: c.UnpackedInstruction = {
             opcode: c.InstructionClass.EBPF_CLS_LDX | size | c.InstructionOpMode.EBPF_MODE_MEM,
             dst: encodeRegister(i.dest),
@@ -192,12 +219,8 @@ const loadxEmitter = (size: c.InstructionOpSize) => {
 };
 
 const lddw = (i: ResolvedInstruction) => {
-    if (i.offset !== 0) {
-        throw new Error(`Offset is ${i.offset}, should be 0 for lddw`);
-    }
-    if (i.source !== "") {
-        throw new Error(`Source register is ${i.source}, should not be specified for lddw`);
-    }
+    assertOffsetZero(i);
+    assertNoSource(i);
     const immLow = Number(i.imm & BigInt("0xffffffff"));
     const immHigh = Number((i.imm >> BigInt(32)) & BigInt("0xffffffff"));
     const unpacked: c.UnpackedInstruction[] = [{
@@ -235,16 +258,12 @@ const storeSizeMax: { [key in keyof typeof c.InstructionOpSize]: bigint } = {
 const storeBaseEmitter = (size: c.InstructionOpSize, cls: c.InstructionClass) => {
     const emitter: Emitter = (i) => {
         if (cls === c.InstructionClass.EBPF_CLS_ST) {
-            if (i.source !== "") {
-                throw new Error(`Unexpected source (${i.source}) for immediate store`);
-            }
+            assertNoSource(i);
             if (i.imm > storeSizeMax[size]) {
                 throw new Error(`Immediate ${i.imm} too large for ${i.opname}`);
             }
         } else {
-            if (i.imm !== BigInt(0)) {
-                throw new Error(`Immediate is ${i.imm}, should be 0 for ${i.opname}`);
-            }
+            assertImmediateZero(i);
         }
         const unpacked: c.UnpackedInstruction = {
             opcode: cls | size | c.InstructionOpMode.EBPF_MODE_MEM,
@@ -275,21 +294,15 @@ const opnameToInstructionOp = (opname: string) => {
 
 const aluBaseEmitter = (cls: c.InstructionClass) => {
     const emitter: Emitter = (i) => {
-        if (i.offset !== 0) {
-            throw new Error(`Offset is ${i.offset}, should be 0 for ${i.opname}`);
-        }
-        if ((i.opname === "neg" || i.opname === "neg32") && i.source !== "") {
-            throw new Error(`Source is ${i.source}, should be unset for neg/neg32`);
+        assertOffsetZero(i);
+        if (i.opname === "neg" || i.opname === "neg32") {
+            assertNoSource(i);
         }
         const sourceOperand = (i.source === "") ? c.InstructionSource.EBPF_SRC_IMM : c.InstructionSource.EBPF_SRC_REG;
         if (sourceOperand === c.InstructionSource.EBPF_SRC_IMM) {
-            if (i.imm > BigInt("0xffffffff")) {
-                throw new Error(`Immediate ${i.imm} too large for ${i.opname}`);
-            }
+            assert32BitImmediate(i);
         } else {
-            if (i.imm !== BigInt(0)) {
-                    throw new Error(`Immediate is ${i.imm}, should be 0 for register ALU op`);
-            }
+            assertImmediateZero(i);
         }
         if (i.opname.endsWith("32")) {
             if (cls !== c.InstructionClass.EBPF_CLS_ALU) {
@@ -316,6 +329,75 @@ const aluBaseEmitter = (cls: c.InstructionClass) => {
 };
 const alu32 = packer(aluBaseEmitter(c.InstructionClass.EBPF_CLS_ALU));
 const alu64 = packer(aluBaseEmitter(c.InstructionClass.EBPF_CLS_ALU64));
+
+
+const endianEmitter = (e: c.InstructionEndianness, bits: number) => {
+    if ([16, 32, 64].indexOf(bits) === -1) {
+        throw new Error(`Bits must be 16, 32, or 64, not ${bits}`);
+    }
+    const emitter: Emitter = (i) => {
+        assertNoSource(i);
+        assertOffsetZero(i);
+        const unpacked: c.UnpackedInstruction = {
+            opcode: c.InstructionClass.EBPF_CLS_ALU | c.InstructionOp.EBPF_ENDIAN | e,
+            dst: encodeRegister(i.dest),
+            src: 0,
+            offset: 0,
+            imm: bits,
+        };
+        return unpacked;
+    }
+    return emitter;
+};
+
+// Typescript needs some convincing that we can convert a string into an enum key
+const opnameToJumpOp = (opname: string) => {
+    let jumpOpcodeLookup = "EBPF_" + opname.toUpperCase();
+    if (jumpOpcodeLookup.endsWith("32")) {
+        jumpOpcodeLookup = jumpOpcodeLookup.slice(0, -2);
+    }
+    if (jumpOpcodeLookup === "jneq") {
+        // jneq is a synonym for jne
+        jumpOpcodeLookup = "jne";
+    }
+    const opcode = c.InstructionJumps[jumpOpcodeLookup as keyof typeof c.InstructionJumps];
+    if (opcode === undefined) {
+        throw new Error(`Unknown jump op ${opname}`);
+    }
+    return opcode;
+};
+
+const jumpBaseEmitter = (cls: c.InstructionClass) => {
+    const emitter: Emitter = (i) => {
+        if (i.opname === "ja" || i.opname === "exit") {
+            assertNoDest(i);
+            assertNoSource(i);
+            assertImmediateZero(i);
+        } else if (i.opname === "call") {
+            assertNoDest(i);
+            assertNoSource(i);
+        }
+        const sourceOperand = (i.source === "") ? c.InstructionSource.EBPF_SRC_IMM : c.InstructionSource.EBPF_SRC_REG;
+        if (sourceOperand === c.InstructionSource.EBPF_SRC_IMM) {
+            assert32BitImmediate(i);
+        } else {
+            assertImmediateZero(i);
+        }
+        const jumpOp: c.InstructionJumps = opnameToJumpOp(i.opname);
+
+        const unpacked: c.UnpackedInstruction = {
+            opcode: cls | sourceOperand | jumpOp,
+            dst: encodeRegister(i.dest),
+            src: encodeRegister(i.source),
+            offset: i.offset,
+            imm: Number(i.imm),
+        };
+        return unpacked;
+    };
+    return emitter;
+}
+const jump32 = packer(jumpBaseEmitter(c.InstructionClass.EBPF_CLS_JMP32));
+const jump64 = packer(jumpBaseEmitter(c.InstructionClass.EBPF_CLS_JMP));
 
 export const encoder: Encoder = {
     lddw: lddw,
@@ -357,8 +439,38 @@ export const encoder: Encoder = {
     xor32: alu32,
     mov32: alu32,
     arsh32: alu32,
+    le16: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_LE, 16)),
+    le32: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_LE, 32)),
+    le64: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_LE, 64)),
+    be16: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_BE, 16)),
+    be32: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_BE, 32)),
+    be64: packer(endianEmitter(c.InstructionEndianness.EBPF_ENDIAN_BE, 64)),
+    ja: jump64,
+    jeq: jump64,
+    jgt: jump64,
+    jge: jump64,
+    jlt: jump64,
+    jle: jump64,
+    jset: jump64,
+    jne: jump64,
+    jsgt: jump64,
+    jsge: jump64,
+    jslt: jump64,
+    jsle: jump64,
+    // there is no ja32, ja takes no arguments.
+    jeq32: jump32,
+    jgt32: jump32,
+    jge32: jump32,
+    jlt32: jump32,
+    jle32: jump32,
+    jset32: jump32,
+    jne32: jump32,
+    jsgt32: jump32,
+    jsge32: jump32,
+    jslt32: jump32,
+    jsle32: jump32,
+    call: jump64,
+    exit: jump64,
 
-
-    // FIXME: endian, jumps, ldabs, ldindx
-
+    // FIXME: ldabs, ldindx
 };
