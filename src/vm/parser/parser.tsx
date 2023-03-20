@@ -17,13 +17,13 @@ import { Parser } from '../../generated/ebpf-assembler';
 import { InstructionOpMode } from '../consts';
 
 export interface ParsedInstruction {
-    mode: InstructionOpMode;
     opname: string;
     lineNumber: number;
-    k?: number;
-    register?: string;
-    true?: string;
-    false?: string;
+    source: string;
+    dest: string;
+    offset: number;
+    imm: bigint;
+    label?: string;
     extension?: string;
 }
 
@@ -36,14 +36,14 @@ interface ParseResult {
 
 export const parse = (prog: string): ParseResult => {
     const p = new Parser();
-    p. yy = {
+    p.yy = {
         labels: {},
         current: {},
         instructions: [],
         InstructionOpMode: InstructionOpMode,
         currentLine: 1,
     };
-    const out = p.parse(prog);
+    p.parse(prog);
     return {
         instructions: p.yy.instructions,
         labels: p.yy.labels,

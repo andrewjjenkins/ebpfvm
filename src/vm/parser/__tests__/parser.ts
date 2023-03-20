@@ -30,7 +30,6 @@ it("parses", () => expectSingleInstruction(
     "stxw [r10], r1\n",
     {
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: 0,
@@ -44,7 +43,6 @@ it("parses with label", () => {
     const expected = {
         lineNumber: 1,
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: -8,
@@ -58,7 +56,6 @@ it("parses with negative offset", () => expectSingleInstruction(
     "stxw [r10 - 8], r1\n",
     {
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: -8,
@@ -70,7 +67,6 @@ it("parses with positive offset", () => expectSingleInstruction(
     "stxw [r10 + 16], r1\n",
     {
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: 16,
@@ -82,7 +78,6 @@ it("parses with hexadecimal offset", () => expectSingleInstruction(
     "stxw [r10 - 0x0a], r1\n",
     {
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: -10,
@@ -94,7 +89,6 @@ it("parses with percent-labeled registers", () => expectSingleInstruction(
     "stxw [%r10], %r1\n",
     {
         opname: "stxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r1",
         dest: "r10",
         offset: 0,
@@ -106,7 +100,6 @@ it("parses stdw", () => expectSingleInstruction(
     "stdw [r3-16], 0xab\n",
     {
         opname: "stdw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         dest: "r3",
         offset: -16,
         imm: BigInt(0xab),
@@ -117,7 +110,6 @@ it("parses stdw decimal", () => expectSingleInstruction(
     "stdw [r3], 123\n",
     {
         opname: "stdw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         dest: "r3",
         offset: 0,
         imm: BigInt(123),
@@ -128,7 +120,6 @@ it("parses stb", () => expectSingleInstruction(
     "stb [r3], 0x123\n",
     {
         opname: "stb",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         dest: "r3",
         offset: 0,
         imm: BigInt(0x123),
@@ -139,7 +130,6 @@ it("parses lddw", () => expectSingleInstruction(
     "lddw r4, 123456\n",
     {
         opname: "lddw",
-        mode: InstructionOpMode.EBPF_MODE_IMM,
         dest: "r4",
         offset: 0,
         imm: BigInt(123456),
@@ -150,7 +140,6 @@ it("parses large lddw", () => expectSingleInstruction(
     "lddw r4, 0x1122334455667788\n",
     {
         opname: "lddw",
-        mode: InstructionOpMode.EBPF_MODE_IMM,
         dest: "r4",
         offset: 0,
         imm: BigInt("0x1122334455667788"),
@@ -161,7 +150,6 @@ it("parses large lddw with hash", () => expectSingleInstruction(
     "lddw r4, #0x1122334455667788\n",
     {
         opname: "lddw",
-        mode: InstructionOpMode.EBPF_MODE_IMM,
         dest: "r4",
         offset: 0,
         imm: BigInt("0x1122334455667788"),
@@ -172,7 +160,6 @@ it("parses ldxh", () => expectSingleInstruction(
     "ldxh r2, [r0]\n",
     {
         opname: "ldxh",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r0",
         dest: "r2",
         offset: 0,
@@ -184,7 +171,6 @@ it("parses ldxh with offset", () => expectSingleInstruction(
     "ldxh r2, [r0 + 14]\n",
     {
         opname: "ldxh",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r0",
         dest: "r2",
         offset: 14,
@@ -196,7 +182,6 @@ it("parses ldxb with hex offset", () => expectSingleInstruction(
     "ldxb r4, [r0 + 0x14]\n",
     {
         opname: "ldxb",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r0",
         dest: "r4",
         offset: 0x14,
@@ -208,7 +193,6 @@ it("parses ldxb with offset", () => expectSingleInstruction(
     "ldxw r4, [r0 - 14]\n",
     {
         opname: "ldxw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r0",
         dest: "r4",
         offset: -14,
@@ -220,7 +204,6 @@ it("parses ldxdw with offset", () => expectSingleInstruction(
     "ldxdw r0, [r2 + 200]\n",
     {
         opname: "ldxdw",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r2",
         dest: "r0",
         offset: 200,
@@ -517,7 +500,6 @@ it("ignores comments", () => expectSingleInstruction(
     {
         lineNumber: 2,
         opname: "ldxh",
-        mode: InstructionOpMode.EBPF_MODE_MEM,
         source: "r4",
         dest: "r2",
         offset: 0x12,

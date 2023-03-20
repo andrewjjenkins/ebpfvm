@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 import { ParsedInstruction, ParsedLabels } from "./parser/parser";
-import { OperandsModes } from './parser/consts';
 
 export interface ResolvedInstruction {
-    mode: OperandsModes;
-    opcode: string;
+    opname: string;
     lineNumber: number;
-    k?: number;
-    register?: string;
-    true?: number;
-    false?: number;
+    source: string,
+    dest: string,
+    offset: number,
+    imm: bigint,
     label?: number;
     extension?: number;
 }
@@ -47,40 +45,16 @@ export const resolve = (
         const inst = instructions[i];
 
         const resolvedInst: ResolvedInstruction = {
-            mode: inst.mode,
-            opcode: inst.opcode,
+            opname: inst.opname,
             lineNumber: inst.lineNumber,
+            imm: (inst.imm === undefined) ? BigInt(0) : inst.imm,
+            source: inst.source,
+            dest: inst.dest,
+            offset: inst.offset,
         };
 
-        if (inst.k !== undefined) {
-            resolvedInst.k = inst.k;
-        }
 
-        if (inst.register !== undefined) {
-            // FIXME: Should we resolve this here?  eBPF
-            resolvedInst.register = inst.register;
-        }
-
-        if (inst.true !== undefined) {
-            const absTarget = labels[inst.true];
-            if (absTarget === undefined) {
-                throw new Error(
-                    `label "${inst.true}" undefined (line ${inst.lineNumber})`
-                );
-            }
-            resolvedInst.true = resolveJumpOffset(i, absTarget);
-        }
-
-        if (inst.false !== undefined) {
-            const absTarget = labels[inst.false];
-            if (absTarget === undefined) {
-                throw new Error(
-                    `label "${inst.false}" undefined (line ${inst.lineNumber})`
-                );
-            }
-            resolvedInst.false = resolveJumpOffset(i, absTarget);
-        }
-
+        // FIXME: Recalculate imm and offset here based on symbols.
         if (inst.extension !== undefined) {
             const absSymbol: number = symbols[inst.extension];
             if (absSymbol === undefined) {

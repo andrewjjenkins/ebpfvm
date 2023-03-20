@@ -235,32 +235,32 @@ jsle_statement: jsle operands_branch_imm | jsle operands_branch_reg;
 call_statement: call operands_imm | call operands_label;
 exit_statement: exit operands_none;
 
-add_statement: add operands_reg_imm | add operands_reg_reg;
-sub_statement: sub operands_reg_imm | sub operands_reg_reg;
-mul_statement: mul operands_reg_imm | mul operands_reg_reg;
-div_statement: div operands_reg_imm | div operands_reg_reg;
-or_statement: or operands_reg_imm | or operands_reg_reg;
-and_statement: and operands_reg_imm | and operands_reg_reg;
-lsh_statement: lsh operands_reg_imm | lsh operands_reg_reg;
-rsh_statement: rsh operands_reg_imm | rsh operands_reg_reg;
+add_statement: add operands_reg_imm | add operands_reg_dir_imm | add operands_reg_reg;
+sub_statement: sub operands_reg_imm | sub operands_reg_dir_imm | sub operands_reg_reg;
+mul_statement: mul operands_reg_imm | mul operands_reg_dir_imm | mul operands_reg_reg;
+div_statement: div operands_reg_imm | div operands_reg_dir_imm | div operands_reg_reg;
+or_statement: or operands_reg_imm | or operands_reg_dir_imm | or operands_reg_reg;
+and_statement: and operands_reg_imm | and operands_reg_dir_imm | and operands_reg_reg;
+lsh_statement: lsh operands_reg_imm | lsh operands_reg_dir_imm | lsh operands_reg_reg;
+rsh_statement: rsh operands_reg_imm | rsh operands_reg_dir_imm | rsh operands_reg_reg;
 neg_statement: neg operands_reg;
-mod_statement: mod operands_reg_imm | mod operands_reg_reg;
-xor_statement: xor operands_reg_imm | xor operands_reg_reg;
-mov_statement: mov operands_reg_imm | mov operands_reg_reg;
-arsh_statement: arsh operands_reg_imm | arsh operands_reg_reg;
-add32_statement: add32 operands_reg_imm | add32 operands_reg_reg;
-sub32_statement: sub32 operands_reg_imm | sub32 operands_reg_reg;
-mul32_statement: mul32 operands_reg_imm | mul32 operands_reg_reg;
-div32_statement: div32 operands_reg_imm | div32 operands_reg_reg;
-or32_statement: or32 operands_reg_imm | or32 operands_reg_reg;
-and32_statement: and32 operands_reg_imm | and32 operands_reg_reg;
-lsh32_statement: lsh32 operands_reg_imm | lsh32 operands_reg_reg;
-rsh32_statement: rsh32 operands_reg_imm | rsh32 operands_reg_reg;
+mod_statement: mod operands_reg_imm | mod operands_reg_dir_imm | mod operands_reg_reg;
+xor_statement: xor operands_reg_imm | xor operands_reg_dir_imm | xor operands_reg_reg;
+mov_statement: mov operands_reg_imm | mov operands_reg_dir_imm | mov operands_reg_reg;
+arsh_statement: arsh operands_reg_imm | arsh operands_reg_dir_imm | arsh operands_reg_reg;
+add32_statement: add32 operands_reg_imm | add32 operands_reg_dir_imm | add32 operands_reg_reg;
+sub32_statement: sub32 operands_reg_imm | sub32 operands_reg_dir_imm | sub32 operands_reg_reg;
+mul32_statement: mul32 operands_reg_imm | mul32 operands_reg_dir_imm | mul32 operands_reg_reg;
+div32_statement: div32 operands_reg_imm | div32 operands_reg_dir_imm | div32 operands_reg_reg;
+or32_statement: or32 operands_reg_imm | or32 operands_reg_dir_imm | or32 operands_reg_reg;
+and32_statement: and32 operands_reg_imm | and32 operands_reg_dir_imm | and32 operands_reg_reg;
+lsh32_statement: lsh32 operands_reg_imm | lsh32 operands_reg_dir_imm | lsh32 operands_reg_reg;
+rsh32_statement: rsh32 operands_reg_imm | rsh32 operands_reg_dir_imm | rsh32 operands_reg_reg;
 neg32_statement: neg32 operands_reg;
-mod32_statement: mod32 operands_reg_imm | mod32 operands_reg_reg;
-xor32_statement: xor32 operands_reg_imm | xor32 operands_reg_reg;
-mov32_statement: mov32 operands_reg_imm | mov32 operands_reg_reg;
-arsh32_statement: arsh32 operands_reg_imm | arsh32 operands_reg_reg;
+mod32_statement: mod32 operands_reg_imm | mod32 operands_reg_dir_imm | mod32 operands_reg_reg;
+xor32_statement: xor32 operands_reg_imm | xor32 operands_reg_dir_imm | xor32 operands_reg_reg;
+mov32_statement: mov32 operands_reg_imm | mov32 operands_reg_dir_imm | mov32 operands_reg_reg;
+arsh32_statement: arsh32 operands_reg_imm | arsh32 operands_reg_dir_imm | arsh32 operands_reg_reg;
 
 le16_statement: le16 operands_reg;
 le32_statement: le32 operands_reg;
@@ -270,17 +270,20 @@ be32_statement: be32 operands_reg;
 be64_statement: be64 operands_reg;
 
 operands_imm: constant {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_IMM;
+  yy.current.source = "";
+  yy.current.dest = "";
+  yy.current.offset = 0;
   yy.current.imm = BigInt(($1).replace(/^\#/,''));
 };
 
 operands_label: label {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_IMM;
+  yy.current.source = "";
+  yy.current.dest = "";
+  yy.current.offset = 0;
   yy.current.label = $1;
 };
 
 operands_mem_reg_load: register "," "[" register "]" {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($1).replace(/^%/, '');
   yy.current.source = ($4).replace(/^%/, '');
   yy.current.offset = 0;
@@ -288,7 +291,6 @@ operands_mem_reg_load: register "," "[" register "]" {
 };
 
 operands_mem_reg_offset_load: register "," "[" register direction constant "]" {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($1).replace(/^%/, '');
   yy.current.source = ($4).replace(/^%/, '');
   yy.current.offset = parseInt($6);
@@ -299,7 +301,6 @@ operands_mem_reg_offset_load: register "," "[" register direction constant "]" {
 };
 
 operands_mem_reg_store: "[" register "]" "," register {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($2).replace(/^%/, '');
   yy.current.source = ($5).replace(/^%/, '');
   yy.current.offset = 0;
@@ -307,7 +308,6 @@ operands_mem_reg_store: "[" register "]" "," register {
 };
 
 operands_mem_reg_offset_store: "[" register direction constant "]" "," register {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($2).replace(/^%/, '');
   yy.current.source = ($7).replace(/^%/, '');
   yy.current.offset = parseInt($4);
@@ -318,17 +318,15 @@ operands_mem_reg_offset_store: "[" register direction constant "]" "," register 
 };
 
 operands_mem_imm: "[" register "]" "," constant {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($2).replace(/^%/, '');
-  yy.current.source = 0;
+  yy.current.source = "";
   yy.current.offset = 0;
   yy.current.imm = BigInt(($5).replace(/^\#/,''));
 };
 
 operands_mem_imm_offset: "[" register direction constant "]" "," constant {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_MEM;
   yy.current.dest = ($2).replace(/^%/, '');
-  yy.current.source = 0;
+  yy.current.source = "";
   yy.current.offset = parseInt($4);
   if ($3 === "-") {
     yy.current.offset = -yy.current.offset;
@@ -337,7 +335,6 @@ operands_mem_imm_offset: "[" register direction constant "]" "," constant {
 };
 
 operands_reg: register {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_IMM;
   yy.current.dest = ($1).replace(/^%/, '');
   yy.current.source = "";
   yy.current.offset = 0;
@@ -345,11 +342,20 @@ operands_reg: register {
 };
 
 operands_reg_imm: register "," constant {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_IMM;
   yy.current.dest = ($1).replace(/^%/, '');
   yy.current.source = "";
   yy.current.offset = 0;
   yy.current.imm = BigInt(($3).replace(/^\#/,''));
+};
+
+operands_reg_dir_imm: register "," direction constant {
+  yy.current.dest = ($1).replace(/^%/, '');
+  yy.current.source = "";
+  yy.current.offset = 0;
+  yy.current.imm = BigInt(($4).replace(/^\#/,''));
+  if ($3 === "-") {
+    yy.current.imm = -yy.current.imm;
+  }
 };
 
 operands_reg_reg: register "," register {
@@ -390,7 +396,6 @@ operands_branch_reg: register "," register "," direction constant {
 };
 
 operands_none: {
-  yy.current.mode = yy.InstructionOpMode.EBPF_MODE_IMM;
   yy.current.source = "";
   yy.current.dest = "";
   yy.current.offset = 0;

@@ -17,17 +17,17 @@ import { assemble } from '../program';
 
 it("assembles", () => {
     const p = assemble(
-        ["ldh [12]",],
+        ["ldxw r1, [r2]",],
         {},
     );
 
     expect(p.instructions.length).toEqual(1);
     const inst = p.instructions[0];
     expect(inst).toMatchObject({
-        asmSource: "ldh [12]",
+        asmSource: "ldxw r1, [r2]",
         machineCode: new Uint8Array([
-            0x00, 0x28, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x0c,
+            0x61, 0x21, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
         ]),
     });
 });
@@ -35,48 +35,58 @@ it("assembles", () => {
 it("assembles a small program", () => {
     const p = assemble(
         [
-            "ldh [12]",
-            "ldi #4000111",
-            "ld  [%x + 40]",
-            "ret #0",
-            "ret a",
+            "ldxw r0, [r2]",
+            "lddw r1, 0x6C616320656E6F6C",
+            "stxdw [r10-16], r1",
+            //"call trace_printk",
+            "mov r1, 663916",
+            "add r1, r10",
+            //"exit",
          ],
          {},
     );
 
     expect(p.instructions.length).toEqual(5);
+    expect(p.instructions[0].machineCode.byteLength).toEqual(8);
+    expect(p.instructions[1].machineCode.byteLength).toEqual(16); // lddw
+    expect(p.instructions[2].machineCode.byteLength).toEqual(8);
+    expect(p.instructions[3].machineCode.byteLength).toEqual(8);
+    expect(p.instructions[4].machineCode.byteLength).toEqual(8);
     expect(p.instructions).toMatchObject([
         {
-            asmSource: "ldh [12]",
+            asmSource: "ldxw r0, [r2]",
             machineCode: new Uint8Array([
-                0x00, 0x28, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x0c,
+                0x61, 0x20, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
             ]),
         }, {
-            asmSource: "ldi #4000111",
+            asmSource: "lddw r1, 0x6C616320656E6F6C",
             machineCode: new Uint8Array([
+                0x18, 0x01, 0x00, 0x00,
+                0x6c, 0x6f, 0x6e, 0x65,
                 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x3d, 0x09, 0x6f,
+                0x20, 0x63, 0x61, 0x6c,
             ]),
         }, {
-            asmSource: "ld  [%x + 40]",
+            asmSource: "stxdw [r10-16], r1",
             machineCode: new Uint8Array([
-                0x00, 0x48, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x28,
+                0x7b, 0x1a, 0xf0, 0xff,
+                0x00, 0x00, 0x00, 0x00,
             ]),
         }, {
-            asmSource: "ret #0",
+            asmSource: "mov r1, 663916",
             machineCode: new Uint8Array([
-                0x00, 0x06, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00,
-            ])
+                0xb7, 0x01, 0x00, 0x00,
+                0x6c, 0x21, 0x0a, 0x00,
+            ]),
         }, {
-            asmSource: "ret a",
+            asmSource: "add r1, r10",
             machineCode: new Uint8Array([
-                0x00, 0x16, 0x00, 0x00,
+                0x0f, 0xa1, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00,
-            ])
+            ]),
         },
+
     ]);
 });
 
@@ -92,6 +102,41 @@ const assemblesSingle =
     };
 };
 
+it("assembles add reg, negative imm", assemblesSingle(
+    "add r1, -48",
+    new Uint8Array([
+        0x07, 0x01, 0x00, 0x00,
+        0xd0, 0xff, 0xff, 0xff,
+    ]),
+));
+
+it("assembles add reg, positive imm", assemblesSingle(
+    "add r1, +48",
+    new Uint8Array([
+        0x07, 0x01, 0x00, 0x00,
+        0x30, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles add reg, imm", assemblesSingle(
+    "add r1, 48",
+    new Uint8Array([
+        0x07, 0x01, 0x00, 0x00,
+        0x30, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles add reg, reg", assemblesSingle(
+    "add r1, r10",
+    new Uint8Array([
+        0x0f, 0xa1, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+    ]),
+));
+
+
+
+/*
 const rejectsInvalid = (instruction: string) => {
     return () => {
         expect(() => assemble([instruction], {})).toThrow();
@@ -276,4 +321,5 @@ it("assembles example program", () => {
         },
     ]);
 });
+*/
 

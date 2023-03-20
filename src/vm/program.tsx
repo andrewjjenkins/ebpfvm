@@ -13,6 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { parse } from './parser/parser';
+import { resolve } from './symbols';
+import { encoder } from './instructions';
+
 export interface Instruction {
     // The assembly version of this instruction, like:
     // 'fooLabel:   jeq #ETHERTYPE_IP, L1, L2',
@@ -68,7 +72,6 @@ export const loadHexbytecode = (bytecode: string) => {
 
 };
 
-/*
 export const assemble = (
     asmSource: string[],
     symbols: Symbols,
@@ -86,10 +89,10 @@ export const assemble = (
             machineCode: new Uint8Array(8),
         };
 
-        if (!(inst.opcode in encoder)) {
-            throw new Error(`Unimplemented opcode ${inst.opcode}`);
+        if (!(inst.opname in encoder)) {
+            throw new Error(`Unimplemented opcode ${inst.opname}`);
         }
-        const encoded = encoder[inst.opcode](inst);
+        const encoded = encoder[inst.opname](inst);
         assembledInstruction.machineCode = encoded;
 
         instructions.push(assembledInstruction);
@@ -100,4 +103,3 @@ export const assemble = (
         labels: parsed.labels,
     };
 };
-*/
