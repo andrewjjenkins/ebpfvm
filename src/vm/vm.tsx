@@ -15,9 +15,10 @@
  */
 import { Cpu } from './cpu';
 import { Memory } from './memory';
-import { loadHexbytecode, Program } from './program';
+import { Program } from './program';
 import { Packet } from './packet';
-import { HELLOWORLD_HEXBYTECODE } from './consts';
+import { assemble } from './program';
+import { HELLOWORLD_SOURCE } from './consts';
 
 const Ubpf = require('../generated/ubpf.js');
 
@@ -118,21 +119,22 @@ export const newVm = (printkLog: (s: string) => void) => {
             console.warn("vmStackSize is %d, not divisible by 32", vmStackSize);
         }
 
-        const insts = loadHexbytecode(HELLOWORLD_HEXBYTECODE);
-        const allocInsts = mod._ebpfvm_allocate_instructions(insts.byteLength / 8);
+        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
+        const program = new Program(assembled.instructions);
+        const instructionBytes = program.getInstructions();
+        const allocInsts = mod._ebpfvm_allocate_instructions(instructionBytes.byteLength / 8);
         if (allocInsts <= 0) {
             throw new Error("Failed to allocate for VM instructions");
         }
         const instsOffset = mod._ebpfvm_get_instructions();
-        const vmInstructions = new Uint8Array(mod.HEAP8.buffer, instsOffset, allocInsts * 8);
-        for (let i = 0; i < insts.byteLength; i++) {
-            vmInstructions[i] = insts[i];
+        const vmInstructions = new Uint8Array(mod.HEAP8.buffer, instsOffset, instructionBytes.byteLength);
+        for (let i = 0; i < instructionBytes.byteLength; i++) {
+            vmInstructions[i] = instructionBytes[i];
         }
         const isValid = mod._ebpfvm_validate_instructions();
         if (isValid !== 0) {
             throw new Error("Failed to validate program");
         }
-        const program = new Program(vmInstructions);
 
         const packet = new Packet();
         const vm = new Vm(cpu, memory, stackMemory, program, packet, mod);

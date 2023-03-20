@@ -16,6 +16,7 @@
 import { parse } from './parser/parser';
 import { resolve } from './symbols';
 import { encoder } from './instructions';
+import { NumbersOutlined } from '@mui/icons-material';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -29,48 +30,51 @@ export type Symbols = {[symbol: string]: number};
 
 export class Program {
     labels: Symbols;
-    instructions: Uint8Array;
+    instructions: Instruction[];
 
-    constructor(instructions: Uint8Array) {
+    constructor(instructions: Instruction[]) {
         this.labels = {};
         this.instructions = instructions;
     }
 
-    /*
     getInstructions() {
+        // FIXME: We should cache this.
+
         const numInstructions = this.instructions.length;
-        const instArray = new Uint8Array(8 * numInstructions);
+
+        // lddw is 16 bytes (2 encoded instructions)
+        let numBytes = 0;
         for (let i = 0; i < numInstructions; i++) {
-            console.assert(this.instructions[i].machineCode.byteLength === 8);
-            for (let j = 0; j < 8; j++) {
-                instArray[i * 8 + j] = this.instructions[i].machineCode[j];
+            numBytes += this.instructions[i].machineCode.byteLength;
+        }
+
+        const instArray = new Uint8Array(numBytes);
+        let byteOffset = 0;
+        for (let i = 0; i < numInstructions; i++) {
+            for (let j = 0; j < this.instructions[i].machineCode.byteLength; j++) {
+                instArray[byteOffset + j] = this.instructions[i].machineCode[j];
             }
+            byteOffset += this.instructions[i].machineCode.byteLength;
         }
         return instArray;
     }
-    */
+
+    getInstructionAtProgramCounter(pc: number) {
+        let counter = 0;
+        for (let i = 0; i < this.instructions.length; i++) {
+            if (counter === pc) {
+                return this.instructions[i];
+            }
+            counter += this.instructions[i].machineCode.byteLength / 8;
+        }
+        return null;
+    }
 }
 
 export interface AssembledProgram {
     labels: Symbols;
     instructions: Instruction[];
 }
-
-
-export const loadHexbytecode = (bytecode: string) => {
-    const textNoWs = bytecode.split("\n").join("");
-
-    console.assert(textNoWs.length % 16 === 0);
-
-    const arraySz = Math.floor(textNoWs.length / 2);
-
-    const instructions = new Uint8Array(arraySz);
-    for (let i = 0; i < arraySz; i++) {
-        instructions[i] = parseInt(textNoWs.slice(i * 2, i * 2 + 2), 16);
-    }
-    return instructions;
-
-};
 
 export const assemble = (
     asmSource: string[],

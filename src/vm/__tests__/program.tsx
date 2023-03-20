@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { assemble } from '../program';
+import { HELLOWORLD_HEXBYTECODE, HELLOWORLD_SOURCE } from '../consts';
 
 it("assembles", () => {
     const p = assemble(
@@ -41,17 +42,18 @@ it("assembles a small program", () => {
             //"call trace_printk",
             "mov r1, 663916",
             "add r1, r10",
-            //"exit",
+            "exit",
          ],
          {},
     );
 
-    expect(p.instructions.length).toEqual(5);
+    expect(p.instructions.length).toEqual(6);
     expect(p.instructions[0].machineCode.byteLength).toEqual(8);
     expect(p.instructions[1].machineCode.byteLength).toEqual(16); // lddw
     expect(p.instructions[2].machineCode.byteLength).toEqual(8);
     expect(p.instructions[3].machineCode.byteLength).toEqual(8);
     expect(p.instructions[4].machineCode.byteLength).toEqual(8);
+    expect(p.instructions[5].machineCode.byteLength).toEqual(8);
     expect(p.instructions).toMatchObject([
         {
             asmSource: "ldxw r0, [r2]",
@@ -85,8 +87,13 @@ it("assembles a small program", () => {
                 0x0f, 0xa1, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00,
             ]),
+        }, {
+            asmSource: "exit",
+            machineCode: new Uint8Array([
+                0x95, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ]),
         },
-
     ]);
 });
 
@@ -134,6 +141,128 @@ it("assembles add reg, reg", assemblesSingle(
     ]),
 ));
 
+it("assembles le16", assemblesSingle(
+    "le16 r3",
+    new Uint8Array([
+        0xd4, 0x03, 0x00, 0x00,
+        0x10, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles le32", assemblesSingle(
+    "le32 r3",
+    new Uint8Array([
+        0xd4, 0x03, 0x00, 0x00,
+        0x20, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles le64", assemblesSingle(
+    "le64 r3",
+    new Uint8Array([
+        0xd4, 0x03, 0x00, 0x00,
+        0x40, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles be16", assemblesSingle(
+    "be16 r3",
+    new Uint8Array([
+        0xdc, 0x03, 0x00, 0x00,
+        0x10, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles be32", assemblesSingle(
+    "be32 r3",
+    new Uint8Array([
+        0xdc, 0x03, 0x00, 0x00,
+        0x20, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles be64", assemblesSingle(
+    "be64 r3",
+    new Uint8Array([
+        0xdc, 0x03, 0x00, 0x00,
+        0x40, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles ja", assemblesSingle(
+    "ja +32",
+    new Uint8Array([
+        0x05, 0x00, 0x20, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles jeq reg-reg", assemblesSingle(
+    "jeq r1, r7, +40",
+    new Uint8Array([
+        0x1d, 0x71, 0x28, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles jeq reg-imm", assemblesSingle(
+    "jeq r1, 447, +40",
+    new Uint8Array([
+        0x15, 0x01, 0x28, 0x00,
+        0xbf, 0x01, 0x00, 0x00,
+    ]),
+));
+
+it("assembles jeq reg-imm", assemblesSingle(
+    "jeq32 r1, 447, +40",
+    new Uint8Array([
+        0x16, 0x01, 0x28, 0x00,
+        0xbf, 0x01, 0x00, 0x00,
+    ]),
+));
+
+it("assembles call 6", assemblesSingle(
+    "call 6",
+    new Uint8Array([
+        0x85, 0x00, 0x00, 0x00,
+        0x06, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it("assembles exit", assemblesSingle(
+    "exit",
+    new Uint8Array([
+        0x95, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+    ]),
+));
+
+it ("assembles Hello World", () => {
+    const lines = HELLOWORLD_SOURCE.split('\n');
+    const p = assemble(
+        lines,
+        {},
+    );
+
+    expect(p.instructions.length).toEqual(lines.length);
+
+    let byteCodeOffset = 0;
+    for (let i = 0; i < p.instructions.length; i++) {
+        const inst = p.instructions[i];
+        for (let j = 0; j < inst.machineCode.byteLength; j++) {
+            const expectedOffset = byteCodeOffset + j;
+            const expectedHexByte = parseInt(HELLOWORLD_HEXBYTECODE.slice(expectedOffset * 2, expectedOffset * 2 + 2), 16);
+            if (inst.machineCode[j] !== expectedHexByte) {
+                // FIXME: A more elegant way of getting to jest "fail()"
+                console.error(`Machine code mismatch at byte ${j} of instruction ${i} ` +
+                    `(bytecode ${expectedOffset}); found ${inst.machineCode[j]}, ` +
+                    `expected ${expectedHexByte}`);
+                expect(true).toBe(false);
+            }
+        }
+        byteCodeOffset += inst.machineCode.byteLength
+    }
+});
 
 
 /*

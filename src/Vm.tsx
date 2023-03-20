@@ -168,14 +168,8 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     };
 
-    const machineCode = new Uint8Array(
-        vmState.program.instructions.buffer,
-        vmState.program.instructions.byteOffset + (vmState.cpu.programCounter[0] * 8),
-        8)
-    const currentInstruction = {
-        asmSource: "# foobar",
-        machineCode: machineCode,
-    };
+    const pc = vmState.cpu.programCounter[0];
+    const currentInstruction = vmState.program.getInstructionAtProgramCounter(pc);
 
     return (
         <Box>
@@ -192,14 +186,14 @@ const Vm: FC<VmProps> = (props) => {
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <Program 
-                programCounter={vmState.cpu.programCounter[0]}
+                programCounter={pc}
                 instructions={vmState.program.instructions}
             />
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <CpuState 
                 instruction={currentInstruction}
-                programCounter={vmState.cpu.programCounter[0]}
+                programCounter={pc}
                 registers={vmState.cpu.registers}
                 timeStep={timeStep}
             />

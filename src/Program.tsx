@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 import { FunctionComponent as FC } from 'react';
+import { Instruction } from './vm/program';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import { disassemble } from './vm/instructions';
 import { TableContainer, TableRow, TableCell, TableBody, Table } from '@mui/material';
 
 const style = {
@@ -31,40 +31,38 @@ const codeStyle = {
 
 interface ProgramProps {
     programCounter: number;
-    instructions: Uint8Array;
+    instructions: Instruction[];
 }
 
 const Program: FC<ProgramProps> = (props) => {
-    const numInstructions = props.instructions.length / 8;
-
-    const disassembled = disassemble(props.instructions, 0, numInstructions);
+    const numInstructions = props.instructions.length;
 
     const rows: JSX.Element[] = [];
 
+    let addr = 0;
+
     for (let i = 0; i < numInstructions; i++) {
-        const addr = i*8;
         let active = (props.programCounter * 8 === addr);
-        if (disassembled[i] === "" && (props.programCounter + 1) * 8 === addr) {
-            // This is the extra word for a previous "lddw"
-            active = true;
-        }
-        const offset = props.instructions.byteOffset + addr;
-        const instView = new Uint8Array(props.instructions.buffer, offset, 8);
         let inst = "";
-        for (let j = 0; j < 8; j++) {
-            inst += instView[j].toString(16).padStart(2, "0");
+        for (let j = 0; j < props.instructions[i].machineCode.byteLength; j++) {
+            if (j === 8) {
+                inst += '\n';
+            }
+            inst += props.instructions[i].machineCode[j].toString(16).padStart(2, "0");
         }
 
         rows.push((
             <TableRow key={addr} selected={active}>
                 <TableCell align="left" sx={{ py: 0, px: 0.5 }}>
-                    <Typography component="pre" sx={codeStyle}>{disassembled[i]}</Typography>
+                    <Typography component="pre" sx={codeStyle}>{props.instructions[i].asmSource}</Typography>
                 </TableCell>
                 <TableCell align="left" sx={{ py: 0, px: 0.5}}>
                     <Typography component="pre" sx={codeStyle}>{inst}</Typography>
                 </TableCell>
             </TableRow>
         ));
+
+        addr += props.instructions[i].machineCode.byteLength;
     }
 
 
