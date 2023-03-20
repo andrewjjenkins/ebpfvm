@@ -22,7 +22,7 @@ import Grid from '@mui/material/Grid';
 import { Instruction } from './vm/program';
 
 interface CpuStateProps {
-    instruction: Instruction;
+    instruction: Instruction | null;
     programCounter: number;
     registers: BigInt64Array;
     timeStep?: number,
@@ -69,17 +69,32 @@ const renderStateItem = (label: string, value: string) => {
 };
 
 const CpuState: FC<CpuStateProps> = (props) => {
-    const opcode = sliceHex(props.instruction.machineCode, 0, 1);
-    const regs = sliceHex(props.instruction.machineCode, 1, 2);
-    const offset = sliceHex(props.instruction.machineCode, 2, 4);
-    const k = sliceHex(props.instruction.machineCode, 4, 8);
-
     const registerGridItems: JSX.Element[] = [];
     for (let i = 0; i < 11; i++) {
         const regVal = props.registers[i].toString(16).padStart(16, '0');
         registerGridItems.push(renderStateItem(`r${i}:`, `0x${regVal}`));
     }
-                    //Opcode: {opcode} Dst/Src: {regs} Offset: {offset} K: {k}</Grid>
+
+    if (props.instruction === null) {
+        return (
+            <Box>
+                <Typography variant="h5" component="div">CPU State</Typography>
+                <Grid container spacing={0.5} sx={{padding: '10px'}}>
+                    {renderStateItem("Opcode:", " -")}
+                    {renderStateItem("Dst/Src:", " -")}
+                    {renderStateItem("Offset:", " -")}
+                    {renderStateItem("K:", " -")}
+                    {registerGridItems}
+                    {renderStateItem("Program Counter:", `${props.programCounter}`)}
+                </Grid>
+            </Box>
+        );
+    }
+
+    const opcode = sliceHex(props.instruction.machineCode, 0, 1);
+    const regs = sliceHex(props.instruction.machineCode, 1, 2);
+    const offset = sliceHex(props.instruction.machineCode, 2, 4);
+    const k = sliceHex(props.instruction.machineCode, 4, 8);
 
     return (
         <Box>
