@@ -15,12 +15,14 @@
  */
 import { Cpu } from './cpu';
 import { Memory } from './memory';
-import { Program } from './program';
+import { Program, Instruction } from './program';
 import { Packet } from './packet';
 import { assemble } from './program';
 import { HELLOWORLD_SOURCE } from './consts';
 
 const Ubpf = require('../generated/ubpf.js');
+
+const MAX_PROGRAM_SIZE = 16*512;  // bytes
 
 interface UbpfModule extends EmscriptenModule {
     // These are all the EMSCRIPTEN_KEEPALIVE functions in
@@ -35,7 +37,7 @@ interface UbpfModule extends EmscriptenModule {
     _ebpfvm_get_stack_len(): number;
     _ebpfvm_allocate_instructions(numInstructions: number): number;
     _ebpfvm_get_instructions(): number;
-    _ebpfvm_validate_instructions(): number;
+    _ebpfvm_validate_instructions(numInstructions: number): number;
     _ebpfvm_exec_step(): number;
 
     // These are controlled by '-s EXPORT_RUNTIME_FUNCTIONS' in the emcc step
@@ -50,14 +52,16 @@ export class Vm {
     program: Program;
     packet: Packet;
     ubpfModule: UbpfModule;
+    maxProgramSize: number;
 
-    constructor(cpu: Cpu, memory: Memory, stack: Memory, program: Program, packet: Packet, ubpfModule: UbpfModule) {
+    constructor(cpu: Cpu, memory: Memory, stack: Memory, program: Program, packet: Packet, ubpfModule: UbpfModule, maxProgramSize: number) {
         this.cpu = cpu;
         this.memory = memory;
         this.stack = stack;
         this.program = program;
         this.packet = packet;
         this.ubpfModule = ubpfModule;
+        this.maxProgramSize = maxProgramSize;
     }
 
     step() {
@@ -71,6 +75,28 @@ export class Vm {
         }
         for (let i = 0; i < this.stack.mem32.length; i++) {
             this.stack.mem32[i] = 0;
+        }
+    }
+
+    setProgram(source: string) {
+        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
+        this.program = new Program(assembled.instructions);
+
+        if (this.program.byteLength > this.maxProgramSize) {
+            throw new Error(`New program too big (${this.program.byteLength} > ${this.maxProgramSize})`);
+        }
+
+        const instructionBytes = this.program.getInstructions();
+        const instsOffset = this.ubpfModule._ebpfvm_get_instructions();
+        const vmInstructions = new Uint8Array(this.ubpfModule.HEAP8.buffer, instsOffset, instructionBytes.byteLength);
+        for (let i = 0; i < instructionBytes.byteLength; i++) {
+            vmInstructions[i] = instructionBytes[i];
+        }
+        const isValid = this.ubpfModule._ebpfvm_validate_instructions(instructionBytes.byteLength / 8);
+        if (isValid !== 0) {
+            // FIXME: Maybe we should store the old program first, in case this one
+            // fails to validate?  Now we're just busted...
+            throw new Error("Failed to validate program");
         }
     }
 }
@@ -119,25 +145,15 @@ export const newVm = (printkLog: (s: string) => void) => {
             console.warn("vmStackSize is %d, not divisible by 32", vmStackSize);
         }
 
-        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
-        const program = new Program(assembled.instructions);
-        const instructionBytes = program.getInstructions();
-        const allocInsts = mod._ebpfvm_allocate_instructions(instructionBytes.byteLength / 8);
+        const toAllocForInstructions = MAX_PROGRAM_SIZE;
+        const allocInsts = mod._ebpfvm_allocate_instructions(toAllocForInstructions / 8);
         if (allocInsts <= 0) {
             throw new Error("Failed to allocate for VM instructions");
         }
-        const instsOffset = mod._ebpfvm_get_instructions();
-        const vmInstructions = new Uint8Array(mod.HEAP8.buffer, instsOffset, instructionBytes.byteLength);
-        for (let i = 0; i < instructionBytes.byteLength; i++) {
-            vmInstructions[i] = instructionBytes[i];
-        }
-        const isValid = mod._ebpfvm_validate_instructions();
-        if (isValid !== 0) {
-            throw new Error("Failed to validate program");
-        }
+        const program = new Program([]);
 
         const packet = new Packet();
-        const vm = new Vm(cpu, memory, stackMemory, program, packet, mod);
+        const vm = new Vm(cpu, memory, stackMemory, program, packet, mod, toAllocForInstructions);
         return vm;
     });
 };

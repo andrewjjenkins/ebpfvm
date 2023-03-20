@@ -29,6 +29,7 @@ struct ubpf_vm
 {
     struct ebpf_inst* insts;
     uint16_t num_insts;
+    uint16_t max_num_insts;
     ubpf_jit_fn jitted;
     size_t jitted_size;
     ext_func* ext_funcs;

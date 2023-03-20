@@ -32,6 +32,7 @@ import StepController from './StepController';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import Output from './Output';
+import { HELLOWORLD_SOURCE } from './vm/consts';
 
 
 interface VmProps {
@@ -75,6 +76,7 @@ const Vm: FC<VmProps> = (props) => {
     const [terminated, setTerminated] = useState<boolean>(false);
     const [printkLines, setPrintkLines] = useState<string[]>([]);
     const [hotAddress, setHotAddress] = useState<number>(0);
+    const [programSource, setProgramSource] = useState<string>(HELLOWORLD_SOURCE);
 
     // This is a hack to force React to consider state to have changed and then
     // re-render.  Necessary because vmState is not a well-behaved React state
@@ -113,6 +115,7 @@ const Vm: FC<VmProps> = (props) => {
 
     useEffect(() => {
         newVm(addPrintkLine).then((vm: VmState) => {
+            vm.setProgram(programSource);
             setVmState(vm);
             let hotAddress: number = Number(vm.cpu.hotAddress[0]);
             if (hotAddress === 0) {

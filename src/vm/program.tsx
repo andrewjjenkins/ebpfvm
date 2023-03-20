@@ -29,28 +29,25 @@ export interface Instruction {
 export type Symbols = {[symbol: string]: number};
 
 export class Program {
-    labels: Symbols;
     instructions: Instruction[];
+    byteLength: number;
 
     constructor(instructions: Instruction[]) {
-        this.labels = {};
         this.instructions = instructions;
+
+        // lddw is 16 bytes (2 encoded instructions)
+        let numBytes = 0;
+        for (let i = 0; i < this.instructions.length; i++) {
+            numBytes += this.instructions[i].machineCode.byteLength;
+        }
+        this.byteLength = numBytes;
     }
 
     getInstructions() {
         // FIXME: We should cache this.
-
-        const numInstructions = this.instructions.length;
-
-        // lddw is 16 bytes (2 encoded instructions)
-        let numBytes = 0;
-        for (let i = 0; i < numInstructions; i++) {
-            numBytes += this.instructions[i].machineCode.byteLength;
-        }
-
-        const instArray = new Uint8Array(numBytes);
+        const instArray = new Uint8Array(this.byteLength);
         let byteOffset = 0;
-        for (let i = 0; i < numInstructions; i++) {
+        for (let i = 0; i < this.instructions.length; i++) {
             for (let j = 0; j < this.instructions[i].machineCode.byteLength; j++) {
                 instArray[byteOffset + j] = this.instructions[i].machineCode[j];
             }

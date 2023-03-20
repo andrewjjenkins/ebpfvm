@@ -128,15 +128,23 @@ int EMSCRIPTEN_KEEPALIVE ebpfvm_allocate_instructions(int n) {
         return -1;
     }
     vm->insts = malloc(bytes);
-    vm->num_insts = n;
+    vm->max_num_insts = n;
     return n;
 }
 
-int EMSCRIPTEN_KEEPALIVE ebpfvm_validate_instructions() {
+int EMSCRIPTEN_KEEPALIVE ebpfvm_validate_instructions(int n) {
     if (vm->insts == NULL) {
-        error_printf(NULL, "ebpfvm_validate_instruction(): no instructions");
+        error_printf(NULL, "ebpfvm_validate_instructions(): no instructions");
         return -1;
     }
+    if (n > vm->max_num_insts) {
+        error_printf(
+            NULL,
+            "ebpfvm_validate_instructions(): too many instructions (%d > %d)",
+            n,
+            vm->max_num_insts);
+    }
+    vm->num_insts = n;
 
     char *errmsg = NULL;
     if (!validate(vm, vm->insts, vm->num_insts, &errmsg)) {
