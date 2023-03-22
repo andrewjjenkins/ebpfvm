@@ -91,6 +91,12 @@ export const assemble = (
             asmSource: asmSource.slice(lastLineNumber, inst.lineNumber).join('\n'),
             machineCode: new Uint8Array(8),
         };
+        // Roll all the extra comments or empty lines after the
+        // last instruction into the last instruction
+        if (i === resolved.length - 1) {
+            assembledInstruction.asmSource =
+                asmSource.slice(lastLineNumber).join('\n');
+        }
 
         if (!(inst.opname in encoder)) {
             throw new Error(`Unimplemented opcode ${inst.opname}`);

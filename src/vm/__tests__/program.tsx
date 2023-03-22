@@ -278,6 +278,20 @@ it("assembles with comments and blank lines", () => {
     });
 });
 
+it("assembles with trailing and blank lines", () => {
+    // a comment line, a blank line, and an instruction
+    const source = "mov r1, 40\n// foo\n\n";
+    const p = assemble(source.split('\n'), {});
+    expect(p.instructions.length).toEqual(1);
+    expect(p.instructions[0]).toMatchObject({
+        asmSource: source,
+        machineCode: new Uint8Array([
+            0xb7, 0x01, 0x00, 0x00,
+            0x28, 0x00, 0x00, 0x00,
+        ]),
+    });
+});
+
 /*
 const rejectsInvalid = (instruction: string) => {
     return () => {
