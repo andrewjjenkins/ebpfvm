@@ -19,6 +19,7 @@
     "@types/react-window": "^1.8.5",
     "@types/styled-components": "^5.1.26",
     "@types/ungap__structured-clone": "^0.3.0",
+    "@uiw/react-codemirror": "^4.19.9",
     "@ungap/structured-clone": "^0.3.4",
     "classnames": "^2.3.2",
     "jison": "^0.4.18",
