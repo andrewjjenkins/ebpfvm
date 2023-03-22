@@ -29,6 +29,7 @@ export const HELLOWORLD_HEXBYTECODE =
 // FIXME: "call 6" should be "call trace_printk" once
 // symbol resolution works.
 export const HELLOWORLD_SOURCE = `\
+// entryPoint: kprobe__sys_clone
 mov r1, 663916
 stxw [r10-8], r1
 lddw r1, 7809632219628990316

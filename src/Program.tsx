@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { FunctionComponent as FC, useCallback, useState } from 'react';
-import { assemble, AssembledProgram } from './vm/program';
+import { assemble, AssembledProgram, Instruction } from './vm/program';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import EditIcon from '@mui/icons-material/Edit';
@@ -57,9 +57,33 @@ enum CodeState {
     HasError,
 }
 
+// If the first line of the program is a comment that contains
+// annotations, extract them.
+export const getAnnotations = (instructions: Instruction[]) => {
+    if (instructions.length === 0 || instructions[0].asmSource.slice(0, 2) !== "//") {
+        return {};
+    }
+
+    const annotations: {[annotation: string]: string} = {};
+    let firstLine = instructions[0].asmSource.split('\n')[0].slice(2).trim();
+    while (firstLine !== "") {
+        const matches = /^(\S+): ?(\S+)/.exec(firstLine);
+        if (matches === null) {
+            // The format of this line is invalid.
+            return {};
+        }
+        annotations[matches[1]] = matches[2];
+
+        // Chop off this match and any whitespace.
+        firstLine = firstLine.slice(matches[0].length).trimStart();
+    }
+    return annotations;
+};
+
 const ProgramReadOnlyView: FC<ProgramProps> = (props) => {
     const instructions = props.program.instructions;
     const numInstructions = instructions.length;
+    const annotations = getAnnotations(instructions);
 
     const rows: JSX.Element[] = [];
 
@@ -75,10 +99,16 @@ const ProgramReadOnlyView: FC<ProgramProps> = (props) => {
             inst += instructions[i].machineCode[j].toString(16).padStart(2, "0");
         }
 
+        // If the first line is annotations, we hide it in this view.
+        let source = instructions[i].asmSource;
+        if (i === 0 && Object.keys(annotations).length !== 0) {
+            source = source.split('\n').slice(1).join('\n');
+        }
+
         rows.push((
             <TableRow key={addr} selected={active}>
                 <TableCell align="left" sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
-                    <Typography component="pre" sx={codeStyle}>{instructions[i].asmSource}</Typography>
+                    <Typography component="pre" sx={codeStyle}>{source}</Typography>
                 </TableCell>
                 <TableCell align="left" sx={{ py: 0, px: 0.5, verticalAlign: "bottom"}}>
                     <Typography component="pre" sx={codeStyle}>{inst}</Typography>
@@ -90,13 +120,18 @@ const ProgramReadOnlyView: FC<ProgramProps> = (props) => {
     }
 
     return (
-        <TableContainer sx={{width: "100%"}}>
-            <Table sx={{style}} size="medium" aria-label="Instructions">
-                <TableBody>
-                    {rows}
-                </TableBody>
-            </Table>
-        </TableContainer>
+        <Box>
+            { annotations.entryPoint &&
+                <Typography variant="subtitle1">Runs on <strong>{annotations.entryPoint}</strong>:</Typography>
+            }
+            <TableContainer sx={{width: "100%"}}>
+                <Table sx={{style}} size="medium" aria-label="Instructions">
+                    <TableBody>
+                        {rows}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </Box>
     );
 };
 
