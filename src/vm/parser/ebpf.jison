@@ -22,7 +22,7 @@
 %}
 
 %%
-[\n]+ return "NL";
+[\n] return "NL";
 \s+   /* skip whitespace */
 \/\/[^\n]* return "comment"  /* skip comments */
 <<EOF>> return "EOF";
@@ -132,7 +132,9 @@ program
   }
   ;
 
-line: comment_line | labeled_statement_line | statement_line;
+line: empty_line | comment_line | labeled_statement_line | statement_line;
+
+empty_line: NL;
 
 comment_line: comment NL;
 

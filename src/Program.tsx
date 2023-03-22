@@ -77,10 +77,10 @@ const ProgramReadOnlyView: FC<ProgramProps> = (props) => {
 
         rows.push((
             <TableRow key={addr} selected={active}>
-                <TableCell align="left" sx={{ py: 0, px: 0.5 }}>
+                <TableCell align="left" sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
                     <Typography component="pre" sx={codeStyle}>{instructions[i].asmSource}</Typography>
                 </TableCell>
-                <TableCell align="left" sx={{ py: 0, px: 0.5}}>
+                <TableCell align="left" sx={{ py: 0, px: 0.5, verticalAlign: "bottom"}}>
                     <Typography component="pre" sx={codeStyle}>{inst}</Typography>
                 </TableCell>
             </TableRow>
@@ -194,13 +194,11 @@ const Program: FC<ProgramProps> = (props) => {
                     } else {
                         setLastError("Unknown error assembling");
                     }
-                    console.warn("Assembling:", error);
                     setCodeState(CodeState.HasError);
                     break;
                 }
                 loadNewProgram(assembled);
                 setLastError("");
-                console.log("Assembled and loaded program");
                 setCodeState(CodeState.Loaded);
                 break;
 

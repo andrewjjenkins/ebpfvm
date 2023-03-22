@@ -16,7 +16,6 @@
 import { parse } from './parser/parser';
 import { resolve } from './symbols';
 import { encoder } from './assemble';
-import { NumbersOutlined } from '@mui/icons-material';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -82,11 +81,14 @@ export const assemble = (
     const parsed = parse(asmSource.join('\n') + '\n');
     const resolved = resolve(parsed.instructions, parsed.labels, symbols);
 
+    // Instructions preceded by comment-lines count as one instruction
+    // but multiple lines.
+    let lastLineNumber = 0;
     for (let i = 0; i < resolved.length; i++) {
         const inst = resolved[i];
         const assembledInstruction: Instruction = {
             // line numbers count from 1.
-            asmSource: asmSource[inst.lineNumber - 1],
+            asmSource: asmSource.slice(lastLineNumber, inst.lineNumber).join('\n'),
             machineCode: new Uint8Array(8),
         };
 
@@ -97,6 +99,7 @@ export const assemble = (
         assembledInstruction.machineCode = encoded;
 
         instructions.push(assembledInstruction);
+        lastLineNumber = inst.lineNumber;
     }
 
     return {

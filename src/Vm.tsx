@@ -111,8 +111,6 @@ const getStackPointer = (vmState: VmState): number => {
     return stackPointer;
 };
 
-const helloWorldProgram = assemble(HELLOWORLD_SOURCE.split('\n'), {});
-
 const Vm: FC<VmProps> = (props) => {
     const [vmError, setVmError] = useState<string | null>(null);
     const [running, setRunning] = useState<boolean>(false);
@@ -154,8 +152,7 @@ const Vm: FC<VmProps> = (props) => {
 
     // The inner vm is not a react component.  This manages updating
     // the program state and commanding the vm to load it.
-    const loadNewProgram = useCallback((program: AssembledProgram) => {
-        const newProgram = (program === null) ? helloWorldProgram : program;
+    const loadNewProgram = useCallback((newProgram: AssembledProgram) => {
         setProgram(newProgram);
 
         if (vmState === null) {
