@@ -15,7 +15,7 @@
  */
 import { parse } from './parser/parser';
 import { resolve } from './symbols';
-import { encoder } from './instructions';
+import { encoder } from './assemble';
 import { NumbersOutlined } from '@mui/icons-material';
 
 export interface Instruction {
