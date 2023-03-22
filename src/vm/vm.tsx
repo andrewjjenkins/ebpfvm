@@ -15,10 +15,8 @@
  */
 import { Cpu } from './cpu';
 import { Memory } from './memory';
-import { Program, Instruction } from './program';
+import { Program, AssembledProgram } from './program';
 import { Packet } from './packet';
-import { assemble } from './program';
-import { HELLOWORLD_SOURCE } from './consts';
 
 const Ubpf = require('../generated/ubpf.js');
 
@@ -78,9 +76,8 @@ export class Vm {
         }
     }
 
-    setProgram(source: string) {
-        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
-        this.program = new Program(assembled.instructions);
+    setProgram(program: AssembledProgram) {
+        this.program = new Program(program.instructions);
 
         if (this.program.byteLength > this.maxProgramSize) {
             throw new Error(`New program too big (${this.program.byteLength} > ${this.maxProgramSize})`);

@@ -11,6 +11,7 @@ const printkTextStyle = {
     fontFamily: 'Monospace',
     fontSize: 'default',
     margin: '1px',
+    whiteSpace: 'pre-line',
 };
 
 const printkEmptyBoxStyle = {

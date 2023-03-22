@@ -33,10 +33,52 @@ import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import Output from './Output';
 import { HELLOWORLD_SOURCE } from './vm/consts';
+import { AssembledProgram, assemble } from './vm/program';
 
+interface VmInitializerProps {}
+
+const VmInitializer: FC<VmInitializerProps> = (props) =>{
+    const [printkLines, setPrintkLines] = useState<string[]>([]);
+    const addPrintkLine = useCallback((line: string) => {
+        let newLines: string[] = [...printkLines, line];
+        if (newLines.length > 1024) {
+            newLines = newLines.slice(newLines.length - 1024);
+        }
+        setPrintkLines(newLines);
+    }, [printkLines, setPrintkLines]);
+
+    const [vmState, setVmState] = useState<VmState | null>(() => {
+        // Initialize the VM once (asynchronously)
+        newVm(addPrintkLine).then((vm: VmState) => {
+            setVmState(vm);
+        });
+
+        // While we're waiting for the async call to complete,
+        // init vmState to null
+        return null;
+    });
+
+    if (vmState === null) {
+        return (
+            <Box>
+                <Typography>VM initializing...</Typography>
+            </Box>
+        )
+    }
+
+    return (
+        <Vm
+        vmState={vmState}
+        printkLines={printkLines}
+        setPrintkLines={setPrintkLines}
+        />
+    );
+};
 
 interface VmProps {
-
+    vmState: VmState;
+    printkLines: string[];
+    setPrintkLines: (lines: string[]) => void;
 }
 
 // from https://stackoverflow.com/questions/53024496/state-not-updating-when-using-react-state-hook-within-setinterval/59274004#59274004
@@ -69,20 +111,24 @@ const getStackPointer = (vmState: VmState): number => {
     return stackPointer;
 };
 
+const helloWorldProgram = assemble(HELLOWORLD_SOURCE.split('\n'), {});
+
 const Vm: FC<VmProps> = (props) => {
-    const [vmState, setVmState] = useState<VmState | null>(null);
     const [vmError, setVmError] = useState<string | null>(null);
     const [running, setRunning] = useState<boolean>(false);
     const [terminated, setTerminated] = useState<boolean>(false);
-    const [printkLines, setPrintkLines] = useState<string[]>([]);
     const [hotAddress, setHotAddress] = useState<number>(0);
-    const [programSource, setProgramSource] = useState<string>(HELLOWORLD_SOURCE);
+
+    // Do not call setProgram directly; call loadNewProgram.
+    const [program, setProgram] = useState<AssembledProgram | null>(null);
 
     // This is a hack to force React to consider state to have changed and then
     // re-render.  Necessary because vmState is not a well-behaved React state
     // variable following functional paradigms (we update it in-place rather
     // than cloning).
     const [timeStep, setTimeStep] = useState(0);
+
+    const { vmState, printkLines, setPrintkLines } = props;
 
     useInterval(() => {
         if (vmState === null) {
@@ -105,35 +151,33 @@ const Vm: FC<VmProps> = (props) => {
         setTimeStep(timeStep + 1);
     }, running ? 400 : null);
 
-    const addPrintkLine = useCallback((line: string) => {
-        let newLines: string[] = [...printkLines, line];
-        if (newLines.length > 1024) {
-            newLines = newLines.slice(newLines.length - 1024);
+
+    // The inner vm is not a react component.  This manages updating
+    // the program state and commanding the vm to load it.
+    const loadNewProgram = useCallback((program: AssembledProgram) => {
+        const newProgram = (program === null) ? helloWorldProgram : program;
+        setProgram(newProgram);
+
+        if (vmState === null) {
+            // If the VM isn't loaded yet, just wait.  It'll automatically load
+            // our program.
+            return;
         }
-        setPrintkLines(newLines);
-    }, [printkLines, setPrintkLines]);
 
-    useEffect(() => {
-        newVm(addPrintkLine).then((vm: VmState) => {
-            vm.setProgram(programSource);
-            setVmState(vm);
-            let hotAddress: number = Number(vm.cpu.hotAddress[0]);
-            if (hotAddress === 0) {
-                // Set it to the stack pointer, that is likely where
-                // the first write will land, so this minimizes the
-                // chances we jolt the screen early in the program.
-                hotAddress = getStackPointer(vm);
-            }
-            setHotAddress(hotAddress);
-        });
-    }, []);
+        vmState.setProgram(newProgram);
+        let newHotAddress: number = Number(vmState.cpu.hotAddress[0]);
+        if (newHotAddress === 0) {
+            // Set it to the stack pointer, that is likely where
+            // the first write will land, so this minimizes the
+            // chances we jolt the screen early in the program.
+            newHotAddress = getStackPointer(vmState);
+        }
+        setHotAddress(newHotAddress);
+    }, [setProgram, vmState, setHotAddress]);
 
-    if (vmState === null) {
-        return (
-            <Box>
-                <Typography>VM initializing...</Typography>
-            </Box>
-        )
+    if (program === null) {
+        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
+        loadNewProgram(assembled);
     }
 
     const onReset = () => {
@@ -188,10 +232,13 @@ const Vm: FC<VmProps> = (props) => {
             />
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+            { program !== null &&
             <Program 
                 programCounter={pc}
-                instructions={vmState.program.instructions}
+                program={program}
+                loadNewProgram={loadNewProgram}
             />
+            }
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <CpuState 
@@ -220,4 +267,4 @@ const Vm: FC<VmProps> = (props) => {
     );
 };
 
-export default Vm;
+export default VmInitializer;
