@@ -49,6 +49,41 @@ call 6
 mov r0, 0
 exit`;
 
+export const FORKTOP_SOURCE =`\
+// entryPoint: kprobe__sched_fork
+ldxdw r3, [r1+104]
+mov r1, 0
+stxw [r10-16], r1
+add r3, 2384
+mov r1, r10
+add r1, -16
+mov r2, 4
+call probe_read
+ldxw r1, [r10-16]
+lsh r1, 32
+arsh r1, 32
+stxdw [r10-8], r1
+lddw r1, 4
+mov r2, r10
+add r2, -8
+call map_lookup_elem
+jeq r0, 0, +4
+ldxdw r1, [r0]
+add r1, 1
+stxdw [r0], r1
+ja +10
+mov r1, 1
+stxdw [r10-16], r1
+lddw r1, 4
+mov r2, r10
+add r2, -8
+mov r3, r10
+add r3, -16
+mov r4, 1
+call map_update_elem
+mov r0, 0
+exit`;
+
 export enum InstructionClass {
     EBPF_CLS_LD = 0x00,
     EBPF_CLS_LDX = 0x01,

@@ -244,7 +244,7 @@ it("assembles Hello World", () => {
         {},
     );
 
-    expect(p.instructions.length).toEqual(lines.length);
+    expect(p.instructions.length).toEqual(18);
 
     let byteCodeOffset = 0;
     for (let i = 0; i < p.instructions.length; i++) {
