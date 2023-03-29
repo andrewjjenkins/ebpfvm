@@ -82,11 +82,11 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
                 return `${opName} ${toImm(imm)}`;
             }
         } else if (op === c.InstructionJumps.EBPF_JA) {
-            return `${opName} ${offset}`;
+            return `${opName} +${off}`;
         } else if (source === 0) {
-            return `${opName} r${dst_reg}, ${toImm(imm)}, ${offset}`;
+            return `${opName} r${dst_reg}, ${toImm(imm)}, +${off}`;
         } else {
-            return `${opName} r${dst_reg}, r${src_reg}, ${offset}`;
+            return `${opName} r${dst_reg}, r${src_reg}, +${off}`;
         }
     } else if (instClass === c.InstructionClass.EBPF_CLS_JMP32) {
         throw new Error("EBPF_CLS_JMP32 Unimplemented");
@@ -128,11 +128,17 @@ export const disassembleInstruction = (code: Uint8Array, offset: number) => {
     }
 };
 
-export const disassemble = (code: Uint8Array, offset: number, numInsts: number) => {
+export const disassemble = (code: Uint8Array) => {
     const decoded: string[] = [];
 
-    for (let i = 0; i < numInsts; i++) {
-        decoded.push(disassembleInstruction(code, offset + 8 * i));
+    for (let i = 0; i < code.byteLength; ) {
+        const newInstruction = disassembleInstruction(code, i);
+        decoded.push(newInstruction);
+        if (newInstruction.startsWith("lddw ")) {
+            i += 16;
+        } else {
+            i += 8;
+        }
     }
     return decoded;
 };
