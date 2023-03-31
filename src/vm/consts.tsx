@@ -54,7 +54,7 @@ export const FORKTOP_SOURCE =`\
 ldxdw r3, [r1+104]
 mov r1, 0
 stxw [r10-16], r1
-add r3, 2384
+add r3, 1304
 mov r1, r10
 add r1, -16
 mov r2, 4
