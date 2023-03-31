@@ -16,6 +16,7 @@
 import { parse } from './parser/parser';
 import { resolve } from './symbols';
 import { encoder } from './assemble';
+import { EBPF_HELPER_FUNC_NAMES } from './consts';
 
 export interface Instruction {
     // The assembly version of this instruction, like:
@@ -72,14 +73,21 @@ export interface AssembledProgram {
     instructions: Instruction[];
 }
 
+export interface AssemblerOptions {
+    symbols?: Symbols,
+    helpers?: string[],
+}
+
 export const assemble = (
     asmSource: string[],
-    symbols: Symbols,
+    options: AssemblerOptions,
 ) => {
     const instructions: Instruction[] = [];
+    const symbols = options.symbols || {};
+    const helpers = options.helpers || EBPF_HELPER_FUNC_NAMES;
 
     const parsed = parse(asmSource.join('\n') + '\n');
-    const resolved = resolve(parsed.instructions, parsed.labels, symbols);
+    const resolved = resolve(parsed.instructions, parsed.labels, symbols, helpers);
 
     // Instructions preceded by comment-lines count as one instruction
     // but multiple lines.

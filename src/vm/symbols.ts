@@ -38,6 +38,7 @@ export const resolve = (
     instructions: ParsedInstruction[],
     labels: ParsedLabels,
     symbols: {[key: string]: number},
+    helpers: string[],
 ) => {
     const resolvedInstructions: ResolvedInstruction[] = [];
 
@@ -53,6 +54,20 @@ export const resolve = (
             offset: inst.offset,
         };
 
+        if (!inst.imm && inst.opname === "call") {
+            if (!inst.label) {
+                throw new Error(
+                    `call instruction without function (line ${inst.lineNumber})`
+                );
+            }
+            const id = helpers.indexOf(inst.label);
+            if (id === -1) {
+                throw new Error(
+                    `call unknown function ${inst.label} (line ${inst.lineNumber})`
+                );
+            }
+            resolvedInst.imm = BigInt(id);
+        }
 
         // FIXME: Recalculate imm and offset here based on symbols.
         if (inst.extension !== undefined) {

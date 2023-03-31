@@ -229,6 +229,14 @@ it("assembles call 6", assemblesSingle(
     ]),
 ));
 
+it("assembles call trace_printk", assemblesSingle(
+    "call trace_printk",
+    new Uint8Array([
+        0x85, 0x00, 0x00, 0x00,
+        0x06, 0x00, 0x00, 0x00,
+    ]),
+));
+
 it("assembles exit", assemblesSingle(
     "exit",
     new Uint8Array([
