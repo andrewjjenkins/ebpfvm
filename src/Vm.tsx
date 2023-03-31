@@ -32,7 +32,7 @@ import StepController from './StepController';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import Output from './Output';
-import { HELLOWORLD_SOURCE } from './vm/consts';
+import { FORKTOP_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
 
 interface VmInitializerProps {}
@@ -173,7 +173,7 @@ const Vm: FC<VmProps> = (props) => {
     }, [setProgram, vmState, setHotAddress]);
 
     if (program === null) {
-        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
+        const assembled = assemble(FORKTOP_SOURCE.split('\n'), {});
         loadNewProgram(assembled);
     }
 
