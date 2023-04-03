@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export const DEFAULT_MEMORY_INIT = "hello world";
-export const DEFAULT_MEMORY_MIN_SIZE = 128;
 
 export const HELLOWORLD_HEXBYTECODE =
 "b70100006c210a00631af8ff00000000180100006c6f6e65000000002063" +

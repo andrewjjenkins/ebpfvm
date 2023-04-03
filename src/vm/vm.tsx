@@ -126,7 +126,6 @@ export const newVm = (printkLog: (s: string) => void) => {
         const vmHeap = new Uint8Array(mod.HEAP8.buffer, vmHeapOffset, vmHeapSize);
         const memory = new Memory({
             buffer: vmHeap,
-            //memoryInit: DEFAULT_MEMORY_INIT,
         });
         if ((vmHeapSize % 4) !== 0) {
             console.warn("vmHeapSize is %d, not divisible by 32", vmHeapSize);
