@@ -114,9 +114,9 @@ export const newVm = (printkLog: (s: string) => void) => {
         }
 
         const vmProgramCounterOffset = mod._ebpfvm_get_programcounter_address();
-        const vmProgramCounter = new Uint16Array(mod.HEAP8.buffer, vmProgramCounterOffset, 2);
+        const vmProgramCounter = new Uint16Array(mod.HEAP8.buffer, vmProgramCounterOffset, 1);
         const vmRegistersOffset = mod._ebpfvm_get_registers();
-        const vmRegisters = new BigInt64Array(mod.HEAP8.buffer, vmRegistersOffset, 8 * 11);
+        const vmRegisters = new BigInt64Array(mod.HEAP8.buffer, vmRegistersOffset, 11);
         const vmHotAddressOffset = mod._ebpfvm_get_hot_address();
         const vmHotAddress = new BigUint64Array(mod.HEAP8.buffer, vmHotAddressOffset, 1);
         const cpu = new Cpu(vmProgramCounter, vmRegisters, vmHotAddress);
