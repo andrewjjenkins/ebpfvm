@@ -28,7 +28,7 @@
 
 #define MAX_EXT_FUNCS 64
 #define EBPF_REGISTERS_COUNT 11
-#define EBPF_MEM_BYTES 8 * 128
+#define EBPF_MEM_BYTES 1024*128
 
 static bool
 bounds_check(
