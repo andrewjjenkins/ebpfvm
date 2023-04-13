@@ -125,17 +125,16 @@ export const newVm = (options: NewVmOptions) => {
 
         const myCallTrampoline: EbpfvmCallbackTrampoline = (internalVm: number, call: BigInt, r1: BigInt, r2: BigInt, r3: BigInt, r4: BigInt, r5: BigInt) => {
             // internalVm is a pointer to "struct ubpf_vm" (in C); don't use.
-            debugger;
 
             if (call > BigInt("0xffffffff")) {
                 printkCallback(`Unhandled large callback ${call}`);
-                return BigInt(-1);
+                return BigInt("0xffffffffffffffff");
             }
             const smallCall = Number(call);
 
             if (!options.callbacks || !options.callbacks[smallCall]) {
                 printkCallback(`Unhandled callback ${call}`);
-                return BigInt(-1);
+                return BigInt("0xffffffffffffffff");
             }
 
             const cb = options.callbacks[smallCall];
@@ -151,7 +150,7 @@ export const newVm = (options: NewVmOptions) => {
         const vmProgramCounterOffset = mod._ebpfvm_get_programcounter_address();
         const vmProgramCounter = new Uint16Array(mod.HEAP8.buffer, vmProgramCounterOffset, 1);
         const vmRegistersOffset = mod._ebpfvm_get_registers();
-        const vmRegisters = new BigInt64Array(mod.HEAP8.buffer, vmRegistersOffset, 11);
+        const vmRegisters = new BigUint64Array(mod.HEAP8.buffer, vmRegistersOffset, 11);
         const vmHotAddressOffset = mod._ebpfvm_get_hot_address();
         const vmHotAddress = new BigUint64Array(mod.HEAP8.buffer, vmHotAddressOffset, 1);
         const cpu = new Cpu(vmProgramCounter, vmRegisters, vmHotAddress);

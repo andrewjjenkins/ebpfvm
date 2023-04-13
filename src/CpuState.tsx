@@ -24,7 +24,7 @@ import { Instruction } from './vm/program';
 interface CpuStateProps {
     instruction: Instruction | null;
     programCounter: number;
-    registers: BigInt64Array;
+    registers: BigUint64Array;
     timeStep?: number,
 }
 
