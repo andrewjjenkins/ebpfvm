@@ -25,7 +25,7 @@ const MAX_PROGRAM_SIZE = 16*512;  // bytes
 interface UbpfModule extends EmscriptenModule {
     // These are all the EMSCRIPTEN_KEEPALIVE functions in
     // ubpf/ebpfvm_emscripten.c
-    _ebpfvm_create_vm(logCallback: number): number;
+    _ebpfvm_create_vm(logCallback: number, trampolineCallback: number): number;
     _ebpfvm_get_programcounter_address(): number;
     _ebpfvm_get_registers(): number;
     _ebpfvm_get_hot_address(): number;
@@ -42,6 +42,9 @@ interface UbpfModule extends EmscriptenModule {
     addFunction(f: (...args: any[])=>any, signature: string): number
     UTF8ToString(wasmAddress: number): string;
 }
+
+type EbpfvmCallback =
+    (vm: Vm, r1: BigInt, r2: BigInt, r3: BigInt, r4: BigInt, r5: BigInt) => BigInt;
 
 export class Vm {
     cpu: Cpu;
@@ -98,7 +101,17 @@ export class Vm {
     }
 }
 
-export const newVm = (printkLog: (s: string) => void) => {
+export interface NewVmOptions {
+    callbacks?: EbpfvmCallback[];
+
+    // Special callbacks that don't have the generic r1, r2, r3, r4, r5
+    // call signature (some processing is done in C).
+    printkCallback?: (s: string) => void;
+}
+
+type EbpfvmCallbackTrampoline = (internalVm: number, call: BigInt, r1: BigInt, r2: BigInt, r3: BigInt, r4: BigInt, r5: BigInt) => BigInt;
+
+export const newVm = (options: NewVmOptions) => {
     return Ubpf({
         locateFile: (path: string, scriptDirectory: string) => {
             // This assumes that you have put the .wasm file
@@ -106,9 +119,31 @@ export const newVm = (printkLog: (s: string) => void) => {
             return process.env.PUBLIC_URL + "/" + path;
         }
     }).then((mod: UbpfModule) => {
-        const logJsString = (wasmS: number) => printkLog(mod.UTF8ToString(wasmS));
+        const printkCallback = options.printkCallback || ((s: string) => console.warn("printk_trace: " + s));
+        const logJsString = (wasmS: number) => printkCallback(mod.UTF8ToString(wasmS));
         const myLogWasmSlot: number = mod.addFunction(logJsString, 'vi');
-        const vmCreateOk = mod._ebpfvm_create_vm(myLogWasmSlot);
+
+        const myCallTrampoline: EbpfvmCallbackTrampoline = (internalVm: number, call: BigInt, r1: BigInt, r2: BigInt, r3: BigInt, r4: BigInt, r5: BigInt) => {
+            // internalVm is a pointer to "struct ubpf_vm" (in C); don't use.
+            debugger;
+
+            if (call > BigInt("0xffffffff")) {
+                printkCallback(`Unhandled large callback ${call}`);
+                return BigInt(-1);
+            }
+            const smallCall = Number(call);
+
+            if (!options.callbacks || !options.callbacks[smallCall]) {
+                printkCallback(`Unhandled callback ${call}`);
+                return BigInt(-1);
+            }
+
+            const cb = options.callbacks[smallCall];
+            return cb(vm, r1, r2, r3, r4, r5);
+        };
+        const myCallTrampolineSlot: number = mod.addFunction(myCallTrampoline, 'jijjjjjj');
+
+        const vmCreateOk = mod._ebpfvm_create_vm(myLogWasmSlot, myCallTrampolineSlot);
         if (vmCreateOk !== 0) {
             throw new Error("Failed to create VM");
         }

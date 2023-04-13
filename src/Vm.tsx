@@ -49,7 +49,10 @@ const VmInitializer: FC<VmInitializerProps> = (props) =>{
 
     const [vmState, setVmState] = useState<VmState | null>(() => {
         // Initialize the VM once (asynchronously)
-        newVm(addPrintkLine).then((vm: VmState) => {
+        const vmOptions: NewVmOptions = {
+            printkCallback: addPrintkLine,
+        };
+        newVm(vmOptions).then((vm: VmState) => {
             setVmState(vm);
         });
 

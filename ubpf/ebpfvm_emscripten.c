@@ -40,7 +40,7 @@ int error_printf(FILE* stream, const char *format, ...) {
     return len;
 }
 
-uint64_t ebpf_trace_printk(struct ubpf_vm *vm, uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5) {
+uint64_t ebpf_trace_printk(struct ubpf_vm *vm, uint64_t call, uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5) {
     char outBuffer[10240];
 
     const char *fmt = (const char *)(r1);
@@ -67,16 +67,12 @@ uint64_t ebpf_trace_printk(struct ubpf_vm *vm, uint64_t r1, uint64_t r2, uint64_
     return 0;
 }
 
-uint64_t ubpf_default_extension_func(struct ubpf_vm *vm, uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5) {
-    EM_ASM({
-        console.log("ubpf_default_extension_func(%d, %d, %d, %d, %d)", $0, $1, $2, $3, $4);
-    }, r1, r2, r3, r4, r5);
-    return 0;
-}
-
 struct ubpf_vm *vm = NULL;
 
-int EMSCRIPTEN_KEEPALIVE ebpfvm_create_vm(void (*printCb)(const char *c)) {
+typedef void (*printCallback)(const char *c);
+typedef uint64_t (*trampCallback)(struct ubpf_vm *vm, uint64_t call, uint64_t r1, uint64_t r2, uint64_t r3, uint64_t r4, uint64_t r5);
+
+int EMSCRIPTEN_KEEPALIVE ebpfvm_create_vm(printCallback printCb, trampCallback trampCb) {
     if (vm != NULL) {
         EM_ASM({
             console.error("epbfvm_create_vm(): already created");
@@ -95,7 +91,7 @@ int EMSCRIPTEN_KEEPALIVE ebpfvm_create_vm(void (*printCb)(const char *c)) {
     vm->printCb = printCb;
 
     for (unsigned int i = 0; i < 64; i++) {
-        if (ubpf_register(vm, i, "ubpf_default_extension_func", ubpf_default_extension_func) < 0) {
+        if (ubpf_register(vm, i, "ebpf_trampoline_cb", trampCb) < 0) {
             error_printf(NULL, "ebpfvm_create_vm(): failed to register extension func %d", i);
             return -1;
         }

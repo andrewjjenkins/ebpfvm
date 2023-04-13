@@ -789,7 +789,7 @@ do {                                                                            
         vm->return_value = reg[0];
         return 0;
     case EBPF_OP_CALL:
-        reg[0] = vm->ext_funcs[inst.imm](vm, reg[1], reg[2], reg[3], reg[4], reg[5]);
+        reg[0] = vm->ext_funcs[inst.imm](vm, inst.imm, reg[1], reg[2], reg[3], reg[4], reg[5]);
         // Unwind the stack if unwind extension returns success.
         if (inst.imm == vm->unwind_stack_extension_index && reg[0] == 0) {
             vm->return_value = reg[0];
