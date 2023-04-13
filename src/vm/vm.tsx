@@ -17,6 +17,7 @@ import { Cpu } from './cpu';
 import { Memory } from './memory';
 import { Program, AssembledProgram } from './program';
 import { Packet } from './packet';
+import { BIG_MAX_32, BIG_NEGATIVE_ONE } from './consts';
 
 const Ubpf = require('../generated/ubpf.js');
 
@@ -126,15 +127,15 @@ export const newVm = (options: NewVmOptions) => {
         const myCallTrampoline: EbpfvmCallbackTrampoline = (internalVm: number, call: BigInt, r1: BigInt, r2: BigInt, r3: BigInt, r4: BigInt, r5: BigInt) => {
             // internalVm is a pointer to "struct ubpf_vm" (in C); don't use.
 
-            if (call > BigInt("0xffffffff")) {
+            if (call > BIG_MAX_32) {
                 printkCallback(`Unhandled large callback ${call}`);
-                return BigInt("0xffffffffffffffff");
+                return BIG_NEGATIVE_ONE;
             }
             const smallCall = Number(call);
 
             if (!options.callbacks || !options.callbacks[smallCall]) {
                 printkCallback(`Unhandled callback ${call}`);
-                return BigInt("0xffffffffffffffff");
+                return BIG_NEGATIVE_ONE;
             }
 
             const cb = options.callbacks[smallCall];

@@ -32,7 +32,7 @@ import StepController from './StepController';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import Output from './Output';
-import { FORKTOP_SOURCE } from './vm/consts';
+import { BIG_MAX_32, FORKTOP_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
 
 interface VmInitializerProps {}
@@ -107,7 +107,7 @@ const useInterval = (callback: Function, delay: number | null) => {
 
 const getStackPointer = (vmState: VmState): number => {
     const stackPointerBig = vmState.cpu.registers[10];
-    if (stackPointerBig > BigInt("0xffffffff")) {
+    if (stackPointerBig > BIG_MAX_32) {
         throw new Error(`Stack pointer is too big: ${stackPointerBig}`);
     }
     const stackPointer = Number(stackPointerBig);

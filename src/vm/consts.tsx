@@ -82,6 +82,10 @@ call map_update_elem
 mov r0, 0
 exit`;
 
+export const BIG_ZERO = BigInt(0);
+export const BIG_MAX_32 = BigInt("0xffffffff");
+export const BIG_NEGATIVE_ONE = BigInt("0xffffffffffffffff");
+
 export enum InstructionClass {
     EBPF_CLS_LD = 0x00,
     EBPF_CLS_LDX = 0x01,

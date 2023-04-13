@@ -75,7 +75,7 @@ const assertNoDest: Validator = (i) => {
     }
 };
 const assert32BitImmediate: Validator = (i) => {
-    if (i.imm > BigInt("0xffffffff")) {
+    if (i.imm > c.BIG_MAX_32) {
         throw new Error(`Immediate ${i.imm} too large for ${i.opname}`);
     }
 };
@@ -99,8 +99,8 @@ const loadxEmitter = (size: c.InstructionOpSize) => {
 const lddw = (i: ResolvedInstruction) => {
     assertOffsetZero(i);
     assertNoSource(i);
-    const immLow = Number(i.imm & BigInt("0xffffffff"));
-    const immHigh = Number((i.imm >> BigInt(32)) & BigInt("0xffffffff"));
+    const immLow = Number(i.imm & c.BIG_MAX_32);
+    const immHigh = Number((i.imm >> BigInt(32)) & c.BIG_MAX_32);
     const unpacked: c.UnpackedInstruction[] = [{
         opcode: c.InstructionClass.EBPF_CLS_LD | c.InstructionOpSize.EBPF_SIZE_DW | c.InstructionOpMode.EBPF_MODE_IMM,
         dst: encodeRegister(i.dest),
