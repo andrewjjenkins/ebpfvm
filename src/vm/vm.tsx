@@ -17,6 +17,7 @@ import { Cpu } from './cpu';
 import { Memory } from './memory';
 import { Program, AssembledProgram } from './program';
 import { Packet } from './packet';
+import { Maps } from './maps';
 import { BIG_MAX_32, BIG_NEGATIVE_ONE } from './consts';
 
 const Ubpf = require('../generated/ubpf.js');
@@ -53,6 +54,7 @@ export class Vm {
     stack: Memory;
     program: Program;
     packet: Packet;
+    maps: Maps;
     ubpfModule: UbpfModule;
     maxProgramSize: number;
 
@@ -62,6 +64,7 @@ export class Vm {
         this.stack = stack;
         this.program = program;
         this.packet = packet;
+        this.maps = new Maps();
         this.ubpfModule = ubpfModule;
         this.maxProgramSize = maxProgramSize;
     }

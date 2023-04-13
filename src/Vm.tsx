@@ -36,6 +36,7 @@ import Output from './Output';
 import { BIG_MAX_32, FORKTOP_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
 import { CreateSchedCloneEntrypoint } from './vm/entrypoint';
+import callbacks from './vm/calls';
 
 interface VmInitializerProps {}
 
@@ -53,6 +54,7 @@ const VmInitializer: FC<VmInitializerProps> = (props) =>{
         // Initialize the VM once (asynchronously)
         const vmOptions: NewVmOptions = {
             printkCallback: addPrintkLine,
+            callbacks: callbacks,
         };
         newVm(vmOptions).then((vm: VmState) => {
             setVmState(vm);
