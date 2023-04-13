@@ -14,9 +14,45 @@
  * limitations under the License.
  */
 
-import binconsts from "../generated/vm/consts";
+import binconsts from '../generated/vm/consts';
 
+type Apply =
+    (freeMemory: Uint8Array, registers: BigUint64Array) => void;
+
+export interface Entrypoint {
+    apply: Apply;
+}
+
+const assignMemory =
+    (freeMemory: Uint8Array, toAssign: Uint8Array) => {
+      if (toAssign.byteLength > freeMemory.byteLength) {
+        throw new Error(`Cannot assign ${toAssign.byteLength} bytes; only ${
+            freeMemory.byteLength} remaining`);
+      }
+      freeMemory.set(toAssign);
+      const newFreeMemory = new Uint8Array(freeMemory.buffer, freeMemory.byteOffset + toAssign.byteLength, freeMemory.byteLength-toAssign.byteLength);
+      return newFreeMemory;
+    };
+
+export const CreateSchedCloneEntrypoint =
+    (pid: number) => {
+      const apply: Apply = (freeMemory, registers) => {
+        const taskStructRelAddr = freeMemory.byteOffset;
+        freeMemory = assignMemory(freeMemory, binconsts['task_struct']);
+        const contextRelAddr = freeMemory.byteOffset;
+        freeMemory = assignMemory(freeMemory, binconsts['context']);
+
+        // The second argument (0x68) is a pointer to "struct task_struct"
+        const contextAsBiguint = new BigUint64Array(freeMemory.buffer, contextRelAddr, binconsts['context'].byteLength / 8);
+        contextAsBiguint[0x68 / 8] = BigInt(taskStructRelAddr);
+
+        // Initialize r1 to point to registers.
+        registers[1] = BigInt(contextRelAddr);
+      };
+
+      return {apply};
+    };
 
 export const SchedCloneEntrypoint = {
-    memory: binconsts.task_struct,
+  memory: binconsts.task_struct,
 };

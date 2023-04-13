@@ -23,6 +23,7 @@ import {
 import Box from '@mui/material/Box';
 import { 
     newVm,
+    NewVmOptions,
     Vm as VmState,
 } from './vm/vm';
 import Memory from './Memory';
@@ -34,6 +35,7 @@ import { Typography } from '@mui/material';
 import Output from './Output';
 import { BIG_MAX_32, FORKTOP_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
+import { CreateSchedCloneEntrypoint } from './vm/entrypoint';
 
 interface VmInitializerProps {}
 
@@ -173,6 +175,10 @@ const Vm: FC<VmProps> = (props) => {
             newHotAddress = getStackPointer(vmState);
         }
         setHotAddress(newHotAddress);
+
+        const entrypoint = CreateSchedCloneEntrypoint(1234);
+
+        entrypoint.apply(vmState.memory.mem, vmState.cpu.registers);
     }, [setProgram, vmState, setHotAddress]);
 
     if (program === null) {

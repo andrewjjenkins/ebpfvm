@@ -1,7 +1,7 @@
 UBPF_C = ubpf/ubpf_jit_x86_64.c ubpf/ubpf_vm.c ubpf/ebpfvm_emscripten.c
 UBPF_H = ubpf/ubpf_int.h ubpf/ebpf.h ubpf/ubpf_jit_x86_64.h ubpf/inc/ubpf.h ubpf/inc/ubpf_config.h
 UBPF_DEPS= $(UBPF_C) $(UBPF_H)
-BINCONSTS=task_struct.bin
+BINCONSTS=task_struct.bin context.bin
 BINCONSTS_GENERATED=$(BINCONSTS:%.bin=src/generated/vm/consts/%.ts)
 GENERATED=public/ubpf.wasm src/generated/ubpf.js src/generated/ebpf-assembler.js $(BINCONSTS_GENERATED) src/generated/vm/consts.ts
 
