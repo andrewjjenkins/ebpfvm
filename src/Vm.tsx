@@ -210,10 +210,15 @@ const Vm: FC<VmProps> = (props) => {
         setRunning(!running);
     }
 
-    const onSetMemoryValue = (offset: number, value: number) => {
+    const onSetStackValue = (offset: number, value: number) => {
         vmState.stack.mem[offset] = value;
         setTimeStep(timeStep + 1);
     };
+    const onSetMemoryValue = (offset: number, value: number) => {
+        vmState.memory.mem[offset] = value;
+        setTimeStep(timeStep + 1);
+    };
+
 
     const pc = vmState.cpu.programCounter[0];
     const currentInstruction = vmState.program.getInstructionAtProgramCounter(pc);
@@ -226,6 +231,17 @@ const Vm: FC<VmProps> = (props) => {
                 memory={vmState.stack.mem}
                 numWordsToShow={16}
                 startingAddress={vmState.stack.mem.byteOffset}
+                hotAddress={hotAddress}
+                timeStep={timeStep}
+                onSetValue={onSetStackValue}
+            />
+        </Paper>
+        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+            <Memory
+                title="Heap"
+                memory={vmState.memory.mem}
+                numWordsToShow={16}
+                startingAddress={vmState.memory.mem.byteOffset}
                 hotAddress={hotAddress}
                 timeStep={timeStep}
                 onSetValue={onSetMemoryValue}
