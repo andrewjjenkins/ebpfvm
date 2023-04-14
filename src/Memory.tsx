@@ -73,7 +73,6 @@ const Memory: FC<MemoryProps> = (props) => {
     const autofocusTooltip = "Automatically scroll to the last read/written address";
     const asciiTooltip = "Also show ASCII representation";
 
-
     return (
         <Box>
             <Box sx={headerBoxStyle}>

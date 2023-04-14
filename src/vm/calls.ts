@@ -24,24 +24,15 @@ const probe_read = (vm: Vm, to: BigInt, n: BigInt, from: BigInt) => {
 
     // FIXME: There are currently no access or bounds controls.
 
-    // FIXME: Need to decide on how to reference this.  We shouldn't 
-    // keep constructing an "all memory" out of the internals of
-    // the windowed memory/stack objects.  Maybe we should just use
-    // overall memory everywhere?
-    const allMemory = new Uint8Array(vm.memory.mem.buffer, 0, vm.memory.mem.buffer.byteLength);
- 
-    debugger;
     for (let i = 0; i < smallN; i++) {
-        allMemory[smallTo + i] = allMemory[smallFrom + i]
+        vm.memory.all[smallTo + i] = vm.memory.all[smallFrom + i]
     }
     return BigInt(0);
 };
 
 const map_lookup_elem = (vm: Vm, bigMapId: BigInt, bigKeyPtr: BigInt) => {
-    debugger;
     const [mapId, keyPtr] = [Number(bigMapId), Number(bigKeyPtr)];
-    const allMemoryu64 = new BigUint64Array(vm.memory.mem.buffer, 0, vm.memory.mem.buffer.byteLength / 8);
-    const bigKey = allMemoryu64[keyPtr / 8];
+    const bigKey = vm.memory.all64[keyPtr / 8];
     const key = Number(bigKey);
 
     const map = vm.maps.get(mapId);
@@ -64,7 +55,6 @@ enum MapUpdateFlags {
 }
 
 const map_update_elem = (vm: Vm, bigMapId: BigInt, bigKeyPtr: BigInt, bigValuePtr: BigInt, bigFlags: BigInt) => {
-    debugger;
     const [mapId, keyPtr, valuePtr, flags] = [bigMapId, bigKeyPtr, bigValuePtr, bigFlags].map(Number);
     const map = vm.maps.get(mapId);
     if (map === undefined) {
@@ -72,10 +62,9 @@ const map_update_elem = (vm: Vm, bigMapId: BigInt, bigKeyPtr: BigInt, bigValuePt
         return BIG_NEGATIVE_ONE;
     }
     
-    const allMemoryu64 = new BigUint64Array(vm.memory.mem.buffer, 0, vm.memory.mem.buffer.byteLength / 8);
-    const bigKey = allMemoryu64[keyPtr / 8];
+    const bigKey = vm.memory.all64[keyPtr / 8];
     const key = Number(bigKey);
-    const bigValue = allMemoryu64[valuePtr / 8];
+    const bigValue = vm.memory.all64[valuePtr / 8];
     const value = Number(bigValue);
 
     if ((flags & MapUpdateFlags.BPF_EXIST) && map[key] === undefined) {

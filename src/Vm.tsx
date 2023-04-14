@@ -180,7 +180,7 @@ const Vm: FC<VmProps> = (props) => {
 
         const entrypoint = CreateSchedCloneEntrypoint(1234);
 
-        entrypoint.apply(vmState.memory.mem, vmState.cpu.registers);
+        entrypoint.apply(vmState.memory.heap, vmState.cpu.registers);
     }, [setProgram, vmState, setHotAddress]);
 
     if (program === null) {
@@ -219,11 +219,11 @@ const Vm: FC<VmProps> = (props) => {
     }
 
     const onSetStackValue = (offset: number, value: number) => {
-        vmState.stack.mem[offset] = value;
+        vmState.memory.stack[offset] = value;
         setTimeStep(timeStep + 1);
     };
-    const onSetMemoryValue = (offset: number, value: number) => {
-        vmState.memory.mem[offset] = value;
+    const onSetHeapValue = (offset: number, value: number) => {
+        vmState.memory.heap[offset] = value;
         setTimeStep(timeStep + 1);
     };
 
@@ -236,9 +236,9 @@ const Vm: FC<VmProps> = (props) => {
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <Memory
                 title="Stack"
-                memory={vmState.stack.mem}
+                memory={vmState.memory.stack}
                 numWordsToShow={16}
-                startingAddress={vmState.stack.mem.byteOffset}
+                startingAddress={vmState.memory.stack.byteOffset}
                 hotAddress={hotAddress}
                 timeStep={timeStep}
                 onSetValue={onSetStackValue}
@@ -247,12 +247,12 @@ const Vm: FC<VmProps> = (props) => {
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <Memory
                 title="Heap"
-                memory={vmState.memory.mem}
+                memory={vmState.memory.heap}
                 numWordsToShow={16}
-                startingAddress={vmState.memory.mem.byteOffset}
+                startingAddress={vmState.memory.heap.byteOffset}
                 hotAddress={hotAddress}
                 timeStep={timeStep}
-                onSetValue={onSetMemoryValue}
+                onSetValue={onSetHeapValue}
             />
         </Paper>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>

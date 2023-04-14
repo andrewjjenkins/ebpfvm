@@ -51,17 +51,15 @@ type EbpfvmCallback =
 export class Vm {
     cpu: Cpu;
     memory: Memory;
-    stack: Memory;
     program: Program;
     packet: Packet;
     maps: Maps;
     ubpfModule: UbpfModule;
     maxProgramSize: number;
 
-    constructor(cpu: Cpu, memory: Memory, stack: Memory, program: Program, packet: Packet, ubpfModule: UbpfModule, maxProgramSize: number) {
+    constructor(cpu: Cpu, memory: Memory, program: Program, packet: Packet, ubpfModule: UbpfModule, maxProgramSize: number) {
         this.cpu = cpu;
         this.memory = memory;
-        this.stack = stack;
         this.program = program;
         this.packet = packet;
         this.maps = new Maps();
@@ -75,11 +73,12 @@ export class Vm {
 
     reset() {
         this.cpu.programCounter[0] = 0;
-        for (let i = 0; i < this.memory.mem32.length; i++) {
-            this.memory.mem32[i] = 0;
+
+        for (let i = 0; i < this.memory.heap.length; i++) {
+            this.memory.heap[i] = 0;
         }
-        for (let i = 0; i < this.stack.mem32.length; i++) {
-            this.stack.mem32[i] = 0;
+        for (let i = 0; i < this.memory.stack.length; i++) {
+            this.memory.stack[i] = 0;
         }
     }
 
@@ -161,23 +160,21 @@ export const newVm = (options: NewVmOptions) => {
 
         const vmHeapOffset = mod._ebpfvm_get_memory();
         const vmHeapSize = mod._ebpfvm_get_memory_len();
-        const vmHeap = new Uint8Array(mod.HEAP8.buffer, vmHeapOffset, vmHeapSize);
-        const memory = new Memory({
-            buffer: vmHeap,
-        });
         if ((vmHeapSize % 4) !== 0) {
             console.warn("vmHeapSize is %d, not divisible by 32", vmHeapSize);
         }
-
         const vmStackOffset = mod._ebpfvm_get_stack();
         const vmStackSize = mod._ebpfvm_get_stack_len();
-        const vmStack = new Uint8Array(mod.HEAP8.buffer, vmStackOffset, vmStackSize);
-        const stackMemory = new Memory({
-            buffer: vmStack,
-        });
         if ((vmStackSize % 4) !== 0) {
             console.warn("vmStackSize is %d, not divisible by 32", vmStackSize);
         }
+        const memory = new Memory({
+            buffer: mod.HEAP8.buffer,
+            heapOffset: vmHeapOffset,
+            heapSize: vmHeapSize,
+            stackOffset: vmStackOffset,
+            stackSize: vmStackSize,
+        });
 
         const toAllocForInstructions = MAX_PROGRAM_SIZE;
         const allocInsts = mod._ebpfvm_allocate_instructions(toAllocForInstructions / 8);
@@ -187,7 +184,7 @@ export const newVm = (options: NewVmOptions) => {
         const program = new Program([]);
 
         const packet = new Packet();
-        const vm = new Vm(cpu, memory, stackMemory, program, packet, mod, toAllocForInstructions);
+        const vm = new Vm(cpu, memory, program, packet, mod, toAllocForInstructions);
         return vm;
     });
 };
