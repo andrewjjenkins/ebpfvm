@@ -46,6 +46,7 @@ struct ubpf_vm
     uint16_t pc;
     uint64_t return_value;
     uint64_t hot_address;
+    uint64_t hot_address_size;
     void (*printCb)(const char *fmt);
 };
 

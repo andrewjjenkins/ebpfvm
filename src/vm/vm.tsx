@@ -31,6 +31,7 @@ interface UbpfModule extends EmscriptenModule {
     _ebpfvm_get_programcounter_address(): number;
     _ebpfvm_get_registers(): number;
     _ebpfvm_get_hot_address(): number;
+    _ebpfvm_get_hot_address_size(): number;
     _ebpfvm_get_memory(): number;
     _ebpfvm_get_memory_len(): number;
     _ebpfvm_get_stack(): number;
@@ -156,7 +157,9 @@ export const newVm = (options: NewVmOptions) => {
         const vmRegisters = new BigUint64Array(mod.HEAP8.buffer, vmRegistersOffset, 11);
         const vmHotAddressOffset = mod._ebpfvm_get_hot_address();
         const vmHotAddress = new BigUint64Array(mod.HEAP8.buffer, vmHotAddressOffset, 1);
-        const cpu = new Cpu(vmProgramCounter, vmRegisters, vmHotAddress);
+        const vmHotAddressSizeOffset = mod._ebpfvm_get_hot_address_size();
+        const vmHotAddressSize = new BigUint64Array(mod.HEAP8.buffer, vmHotAddressSizeOffset, 1);
+        const cpu = new Cpu(vmProgramCounter, vmRegisters, vmHotAddress, vmHotAddressSize);
 
         const vmHeapOffset = mod._ebpfvm_get_memory();
         const vmHeapSize = mod._ebpfvm_get_memory_len();

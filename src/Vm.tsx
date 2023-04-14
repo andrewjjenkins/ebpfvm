@@ -26,7 +26,7 @@ import {
     NewVmOptions,
     Vm as VmState,
 } from './vm/vm';
-import Memory from './Memory';
+import Memory, { HotAddressInfo } from './Memory';
 import Program from './Program';
 import CpuState from './CpuState';
 import StepController from './StepController';
@@ -122,7 +122,7 @@ const Vm: FC<VmProps> = (props) => {
     const [vmError, setVmError] = useState<string | null>(null);
     const [running, setRunning] = useState<boolean>(false);
     const [terminated, setTerminated] = useState<boolean>(false);
-    const [hotAddress, setHotAddress] = useState<number>(0);
+    const [hotAddress, setHotAddress] = useState<HotAddressInfo>({address: 0, size: 0});
 
     // Do not call setProgram directly; call loadNewProgram.
     const [program, setProgram] = useState<AssembledProgram | null>(null);
@@ -140,9 +140,13 @@ const Vm: FC<VmProps> = (props) => {
             return;
         }
         const rc = vmState.step();
-        const newHotAddress = Number(vmState.cpu.hotAddress[0]);
-        if (newHotAddress !== 0) {
-            setHotAddress(Number(vmState.cpu.hotAddress[0]));
+        const newHotAddress: HotAddressInfo = {
+            address: Number(vmState.cpu.hotAddress[0]),
+            size: Number(vmState.cpu.hotAddressSize[0]),
+        };
+        if (newHotAddress.address !== hotAddress.address ||
+            newHotAddress.size !== hotAddress.size) {
+            setHotAddress(newHotAddress);
         }
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);
@@ -169,12 +173,15 @@ const Vm: FC<VmProps> = (props) => {
         }
 
         vmState.setProgram(newProgram);
-        let newHotAddress: number = Number(vmState.cpu.hotAddress[0]);
-        if (newHotAddress === 0) {
+        const newHotAddress: HotAddressInfo = {
+            address: Number(vmState.cpu.hotAddress[0]),
+            size: Number(vmState.cpu.hotAddressSize[0]),
+        };
+        if (newHotAddress.address === 0) {
             // Set it to the stack pointer, that is likely where
             // the first write will land, so this minimizes the
             // chances we jolt the screen early in the program.
-            newHotAddress = getStackPointer(vmState);
+            newHotAddress.address = getStackPointer(vmState);
         }
         setHotAddress(newHotAddress);
 
@@ -200,9 +207,13 @@ const Vm: FC<VmProps> = (props) => {
         if (terminated) { return; }
         setRunning(false);
         const rc = vmState.step();
-        const newHotAddress = Number(vmState.cpu.hotAddress[0]);
-        if (newHotAddress !== 0) {
-            setHotAddress(Number(vmState.cpu.hotAddress[0]));
+        const newHotAddress: HotAddressInfo = {
+            address: Number(vmState.cpu.hotAddress[0]),
+            size: Number(vmState.cpu.hotAddressSize[0]),
+        };
+        if (newHotAddress.address !== hotAddress.address ||
+            newHotAddress.size !== hotAddress.size) {
+            setHotAddress(newHotAddress);
         }
         if (rc < 0) {
             setVmError(`Error from VM: ${rc}`);

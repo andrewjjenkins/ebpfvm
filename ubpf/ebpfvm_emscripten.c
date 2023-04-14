@@ -203,6 +203,13 @@ uint64_t * EMSCRIPTEN_KEEPALIVE ebpfvm_get_hot_address() {
     return &(vm->hot_address);
 }
 
+uint64_t * EMSCRIPTEN_KEEPALIVE ebpfvm_get_hot_address_size() {
+    if (vm == NULL) {
+        return NULL;
+    }
+    return &(vm->hot_address_size);
+}
+
 int EMSCRIPTEN_KEEPALIVE ebpfvm_exec_step() {
     if (vm == NULL) {
         error_printf(NULL, "ebpfvm_exec_step(): VM not initialized");

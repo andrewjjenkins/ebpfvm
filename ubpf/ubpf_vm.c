@@ -243,6 +243,7 @@ ubpf_mem_load(struct ubpf_vm *vm, uint64_t address, size_t size)
     }
 
     vm->hot_address = address;
+    vm->hot_address_size = size;
 
     switch (size) {
     case 1:
@@ -267,6 +268,7 @@ ubpf_mem_store(struct ubpf_vm *vm, uint64_t address, uint64_t value, size_t size
     }
 
     vm->hot_address = address;
+    vm->hot_address_size = size;
 
     switch (size) {
     case 1:

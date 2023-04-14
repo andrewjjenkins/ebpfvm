@@ -17,10 +17,12 @@ export class Cpu {
     programCounter: Uint16Array;
     registers: BigUint64Array;
     hotAddress: BigUint64Array;
+    hotAddressSize: BigUint64Array;
 
-    constructor(programCounter: Uint16Array, registers: BigUint64Array, hotAddress: BigUint64Array) {
+    constructor(programCounter: Uint16Array, registers: BigUint64Array, hotAddress: BigUint64Array, hotAddressSize: BigUint64Array) {
         this.programCounter = programCounter;
         this.registers = registers;
         this.hotAddress = hotAddress;
+        this.hotAddressSize = hotAddressSize;
     }
 }

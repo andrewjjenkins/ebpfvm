@@ -26,12 +26,17 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import HexEditor from './hex-editor';
 
+export interface HotAddressInfo {
+    address: number;
+    size: number;  // size=0: we'll scroll but not highlight.
+}
+
 interface MemoryProps {
     title: string,
     memory: Uint8Array,
     startingAddress?: number,
     numWordsToShow?: number,
-    hotAddress?: number,
+    hotAddress?: HotAddressInfo,
     timeStep?: number,
     onSetValue?: (offset: number, value: number) => void;
 }
@@ -48,21 +53,28 @@ const headerBoxStyle = {
 const ROWS_TO_SHOW = 8;
 
 const Memory: FC<MemoryProps> = (props) => {
-    const [hotAddress, setHotAddress] = useState<number>(0);
+    const [hotByte, setHotByte] = useState<number>(0);
     const [autofocus, setAutofocus] = useState(true);
     const [showAscii, setShowAscii] = useState(true);
     const hexEditor = useRef<any>(null);
 
     const startingAddress = props.startingAddress || 0;
-    const newHotAddress = props.hotAddress || 0;
     useEffect(() => {
-        if (newHotAddress !== hotAddress) {
-            setHotAddress(newHotAddress);
-            if (hexEditor.current !== null && autofocus) {
-                hexEditor.current.scrollToByte(newHotAddress - startingAddress);
+        const newHotAddress = props.hotAddress || {address: 0, size: 0};
+        const newHotByte = newHotAddress.address - startingAddress;
+        if (newHotByte < 0 || newHotByte > props.memory.byteLength) {
+            // This hot byte is not in our view; remain how we are.
+            return;
+        }
+        setHotByte(newHotByte);
+        if (hexEditor.current !== null && autofocus) {
+            console.log(`Scrolling to byte ${newHotByte}`);
+            hexEditor.current.scrollToByte(newHotByte);
+            if (newHotAddress.size !== 0) {
+                hexEditor.current.setSelectionRange(newHotByte, newHotByte + newHotAddress.size);
             }
         }
-    }, [newHotAddress, hotAddress, autofocus, startingAddress]);
+    }, [props.hotAddress, hotByte, autofocus, startingAddress, props.memory.byteLength]);
 
     const onAutofocusToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
         setAutofocus(event.target.checked);
