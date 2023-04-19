@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { FunctionComponent as FC } from "react";
+import { FunctionComponent as FC, createContext, useContext } from "react";
 import {
     TableContainer,
     TableRow,
@@ -23,6 +23,7 @@ import {
     Box,
     Typography,
 } from "@mui/material";
+import { FixedSizeList as List, ListChildComponentProps } from "react-window";
 import { AssembledProgram, Instruction } from "./vm/program";
 
 const style = {
@@ -61,6 +62,60 @@ export const getAnnotations = (instructions: Instruction[]) => {
     return annotations;
 };
 
+export interface WindowedProgramContextInterface {
+    programCounter: number;
+    program: AssembledProgram;
+    annotations: {[annotation: string]: string};
+}
+
+const WindowedProgramContext = createContext<WindowedProgramContextInterface>({
+    programCounter: 0,
+    program: { labels: {}, instructions: [] },
+    annotations: {},
+});
+
+const ProgramLine = ({index: rowIndex, style: itemStyle}: ListChildComponentProps) => {
+    const { programCounter, program, annotations } = useContext(WindowedProgramContext);
+    const addr = 8 * rowIndex;
+    const active = programCounter * 8 === addr;
+    const { instructions } = program;
+
+    let inst = "";
+    for (let j = 0; j < instructions[rowIndex].machineCode.byteLength; j++) {
+        if (j === 8) {
+            inst += "\n";
+        }
+        inst += instructions[rowIndex].machineCode[j]
+            .toString(16)
+            .padStart(2, "0");
+    }
+
+    // If the first line is annotations, we hide it in this view.
+    let source = instructions[rowIndex].asmSource;
+    if (rowIndex === 0 && Object.keys(annotations).length !== 0) {
+        source = source.split("\n").slice(1).join("\n");
+    }
+
+    return (
+        <Box>
+            <Box
+                sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
+            >
+                <Typography component="pre" sx={codeStyle}>
+                    {source}
+                </Typography>
+            </Box>
+            <Box
+                sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
+            >
+                <Typography component="pre" sx={codeStyle}>
+                    {inst}
+                </Typography>
+            </Box>
+        </Box>
+    );
+};
+
 interface WindowedProgramProps {
     programCounter: number;
     program: AssembledProgram;
@@ -71,51 +126,11 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
     const numInstructions = instructions.length;
     const annotations = getAnnotations(instructions);
 
-    const rows: JSX.Element[] = [];
-
-    let addr = 0;
-
-    for (let i = 0; i < numInstructions; i++) {
-        let active = props.programCounter * 8 === addr;
-        let inst = "";
-        for (let j = 0; j < instructions[i].machineCode.byteLength; j++) {
-            if (j === 8) {
-                inst += "\n";
-            }
-            inst += instructions[i].machineCode[j]
-                .toString(16)
-                .padStart(2, "0");
-        }
-
-        // If the first line is annotations, we hide it in this view.
-        let source = instructions[i].asmSource;
-        if (i === 0 && Object.keys(annotations).length !== 0) {
-            source = source.split("\n").slice(1).join("\n");
-        }
-
-        rows.push(
-            <TableRow key={addr} selected={active}>
-                <TableCell
-                    align="left"
-                    sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
-                >
-                    <Typography component="pre" sx={codeStyle}>
-                        {source}
-                    </Typography>
-                </TableCell>
-                <TableCell
-                    align="left"
-                    sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
-                >
-                    <Typography component="pre" sx={codeStyle}>
-                        {inst}
-                    </Typography>
-                </TableCell>
-            </TableRow>
-        );
-
-        addr += instructions[i].machineCode.byteLength;
-    }
+    const windowedContext = {
+        programCounter: props.programCounter,
+        program: props.program,
+        annotations,
+    };
 
     return (
         <Box>
@@ -124,11 +139,17 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
                     Runs on <strong>{annotations.entryPoint}</strong>:
                 </Typography>
             )}
-            <TableContainer sx={{ width: "100%" }}>
-                <Table sx={{ style }} size="medium" aria-label="Instructions">
-                    <TableBody>{rows}</TableBody>
-                </Table>
-            </TableContainer>
+            <WindowedProgramContext.Provider value={windowedContext}>
+                <List
+                itemCount={10}
+                itemSize={24}
+                layout="vertical"
+                height={150}
+                width="100%"
+                >
+                    {ProgramLine}
+                </List>
+            </WindowedProgramContext.Provider>
         </Box>
     );
 };
