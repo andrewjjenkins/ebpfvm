@@ -13,27 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { FunctionComponent as FC, createContext, useContext } from "react";
+import { FunctionComponent as FC, useCallback, useMemo, useRef } from "react";
+import { Box, Typography } from "@mui/material";
 import {
-    TableContainer,
-    TableRow,
-    TableCell,
-    TableBody,
-    Table,
-    Box,
-    Typography,
-} from "@mui/material";
-import { FixedSizeList as List, ListChildComponentProps } from "react-window";
+    ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    Row,
+    useReactTable,
+    Header,
+} from "@tanstack/react-table";
 import { AssembledProgram, Instruction } from "./vm/program";
-
-const style = {
-    minWidth: 180,
-    bgcolor: "background.paper",
-};
+import { VirtualItem, useVirtual } from "react-virtual";
 
 const codeStyle = {
     fontFamily: "Monospace",
     margin: "1px",
+};
+
+const programCounterStyle = {
+    ...codeStyle,
+    textAlign: "right",
 };
 
 // If the first line of the program is a comment that contains
@@ -62,94 +62,204 @@ export const getAnnotations = (instructions: Instruction[]) => {
     return annotations;
 };
 
-export interface WindowedProgramContextInterface {
-    programCounter: number;
-    program: AssembledProgram;
-    annotations: {[annotation: string]: string};
-}
-
-const WindowedProgramContext = createContext<WindowedProgramContextInterface>({
-    programCounter: 0,
-    program: { labels: {}, instructions: [] },
-    annotations: {},
-});
-
-const ProgramLine = ({index: rowIndex, style: itemStyle}: ListChildComponentProps) => {
-    const { programCounter, program, annotations } = useContext(WindowedProgramContext);
-    const addr = 8 * rowIndex;
-    const active = programCounter * 8 === addr;
-    const { instructions } = program;
-
-    let inst = "";
-    for (let j = 0; j < instructions[rowIndex].machineCode.byteLength; j++) {
-        if (j === 8) {
-            inst += "\n";
-        }
-        inst += instructions[rowIndex].machineCode[j]
-            .toString(16)
-            .padStart(2, "0");
-    }
-
-    // If the first line is annotations, we hide it in this view.
-    let source = instructions[rowIndex].asmSource;
-    if (rowIndex === 0 && Object.keys(annotations).length !== 0) {
-        source = source.split("\n").slice(1).join("\n");
-    }
-
-    return (
-        <Box>
-            <Box
-                sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
-            >
-                <Typography component="pre" sx={codeStyle}>
-                    {source}
-                </Typography>
-            </Box>
-            <Box
-                sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}
-            >
-                <Typography component="pre" sx={codeStyle}>
-                    {inst}
-                </Typography>
-            </Box>
-        </Box>
-    );
-};
-
 interface WindowedProgramProps {
     programCounter: number;
     program: AssembledProgram;
 }
+
+interface DisplayedInstruction {
+    programCounter: number;
+    address: number;
+    source: string;
+    inst: string;
+    active: boolean;
+}
+
+interface ProgramTableProps {
+    columns: ColumnDef<DisplayedInstruction>[];
+    data: DisplayedInstruction[];
+}
+
+const renderHeader = (header: Header<DisplayedInstruction, unknown>) => {
+    return (
+        <th
+            key={header.id}
+            colSpan={header.colSpan}
+            style={{ width: header.getSize() }}
+        >
+            {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+            )}
+        </th>
+    );
+};
+
+const renderRow = (row: Row<DisplayedInstruction>) => {
+    const { programCounter, source, inst } = row.original;
+
+    return (
+        <tr key={row.id}>
+            <td>
+                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
+                    <Typography component="pre" sx={programCounterStyle}>
+                        {programCounter}
+                    </Typography>
+                </Box>
+            </td>
+            <td>
+                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
+                    <Typography component="pre" sx={codeStyle}>
+                        {source}
+                    </Typography>
+                </Box>
+            </td>
+            <td>
+                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
+                    <Typography component="pre" sx={codeStyle}>
+                        {inst}
+                    </Typography>
+                </Box>
+            </td>
+        </tr>
+    );
+};
+
+
+const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
+    const table = useReactTable({
+        data,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        debugTable: true,
+    });
+
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const { rows } = table.getRowModel();
+    const rowVirtualizer = useVirtual({
+        parentRef: tableContainerRef,
+        estimateSize: useCallback((index: number) => 24, []),
+        size: data.length,
+        overscan: 10,
+    });
+    const { virtualItems: virtualRows, totalSize } = rowVirtualizer;
+
+    let paddingTop: JSX.Element | null = null;
+    let paddingBottom: JSX.Element | null = null;
+    if (virtualRows.length > 0) {
+        const firstRow = virtualRows[0];
+        const lastRow = virtualRows[virtualRows.length - 1];
+        if (firstRow.start && firstRow.start > 0) {
+            paddingTop = (<tr>
+                <td style={{ height: `${firstRow.start}px`}} />
+            </tr>);
+        }
+        if (lastRow.end && lastRow.end > 0) {
+            paddingBottom = (<tr>
+                <td style={{ height: `${totalSize} - ${lastRow.end}px`}} />
+            </tr>);
+        }
+    }
+    if (paddingTop || paddingBottom) {
+    }
+    
+    const renderVirtualRow = (virtualRow: VirtualItem) => {
+        const row = rows[virtualRow.index] as Row<DisplayedInstruction>;
+        return renderRow(row);
+    };
+
+    return (
+        <div className="p-2">
+            <div className="h-2" />
+            <div ref={tableContainerRef} style={{height: 500, overflow: "auto" }}className="container">
+                <table>
+                    <thead style={{ position: "sticky", top: 0, background: "lightgray"}}>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <tr key={headerGroup.id}>
+                                {headerGroup.headers.map(renderHeader)}
+                            </tr>
+                        ))}
+                    </thead>
+                    <tbody>
+                        {paddingTop}
+                        {virtualRows.map(renderVirtualRow)}
+                        {paddingBottom}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
 export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
     const instructions = props.program.instructions;
     const numInstructions = instructions.length;
     const annotations = getAnnotations(instructions);
 
-    const windowedContext = {
-        programCounter: props.programCounter,
-        program: props.program,
-        annotations,
-    };
+    const data = useMemo<DisplayedInstruction[]>(() => {
+        let address = 0;
+        const data: DisplayedInstruction[] = [];
+
+        for (let i = 0; i < numInstructions; i++) {
+            const active = props.programCounter * 8 === address;
+            let inst = "";
+            for (let j = 0; j < instructions[i].machineCode.byteLength; j++) {
+                if (j === 8) {
+                    inst += "\n";
+                }
+                inst += instructions[i].machineCode[j]
+                    .toString(16)
+                    .padStart(2, "0");
+            }
+
+            // If the first line is annotations, we hide it in this view.
+            let source = instructions[i].asmSource;
+            if (i === 0 && Object.keys(annotations).length !== 0) {
+                source = source.split("\n").slice(1).join("\n");
+            }
+
+            const programCounter = address / 8;
+
+            data.push({
+                programCounter,
+                address,
+                source,
+                inst,
+                active,
+            });
+
+            address += instructions[i].machineCode.byteLength;
+        }
+        return data;
+    }, [instructions, numInstructions, annotations]);
+
+    const columns = useMemo<ColumnDef<DisplayedInstruction>[]>(
+        () => [
+            {
+                header: "PC",
+                accessorKey: "programCounter",
+                size: 75,
+            },
+            {
+                header: "Source",
+                accessorKey: "source",
+                size: 100,
+            },
+            {
+                header: "Machine Code",
+                accessorKey: "inst",
+                size: 100,
+            },
+        ],
+        []
+    );
 
     return (
         <Box>
-            {annotations.entryPoint && (
-                <Typography variant="subtitle1">
-                    Runs on <strong>{annotations.entryPoint}</strong>:
-                </Typography>
-            )}
-            <WindowedProgramContext.Provider value={windowedContext}>
-                <List
-                itemCount={10}
-                itemSize={24}
-                layout="vertical"
-                height={150}
-                width="100%"
-                >
-                    {ProgramLine}
-                </List>
-            </WindowedProgramContext.Provider>
+            { annotations.entryPoint &&
+                <Typography variant="subtitle1">Runs on <strong>{annotations.entryPoint}</strong>:</Typography>
+            }
+            <ProgramTable columns={columns} data={data} />
         </Box>
     );
 };
