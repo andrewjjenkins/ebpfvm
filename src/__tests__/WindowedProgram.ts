@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { getAnnotations } from '../Program';
+import { getAnnotations } from '../WindowedProgram';
 import { assemble } from '../vm/program';
 
 const expectGetsAnnotations = (line: string, expected: any) => {
