@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { FunctionComponent as FC, useCallback, useMemo, useRef } from "react";
+import { FunctionComponent as FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Table,
     TableContainer,
@@ -34,6 +34,7 @@ import {
 } from "@tanstack/react-table";
 import { AssembledProgram, Instruction } from "./vm/program";
 import { VirtualItem, useVirtual } from "react-virtual";
+import hexEditorTheme from "./hex-editor/themes";
 
 const codeStyle = {
     fontFamily: "Monospace",
@@ -53,6 +54,7 @@ const programCounterActiveStyle = {
 
 const headerStyle = {
     padding: "2px",
+    color: hexEditorTheme.colorTextLabelCurrent,
 };
 
 const headerProgramCounterStyle = {
@@ -98,11 +100,6 @@ interface DisplayedInstruction {
     source: string;
     inst: string;
     active: boolean;
-}
-
-interface ProgramTableProps {
-    columns: ColumnDef<DisplayedInstruction>[];
-    data: DisplayedInstruction[];
 }
 
 const renderHeader = (header: Header<DisplayedInstruction, unknown>) => {
@@ -158,7 +155,14 @@ const countLines = (s: string) => {
 const LINE_HEIGHT_ESTIMATE = 24; //pixels
 const BOX_PADDING_ESTIMATE = 7; //pixels
 
-const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
+interface ProgramTableProps {
+    columns: ColumnDef<DisplayedInstruction>[];
+    data: DisplayedInstruction[];
+    hotIndex: number;
+}
+
+const ProgramTable: FC<ProgramTableProps> = (props: ProgramTableProps) => {
+    const { columns, data, hotIndex } = props;
     const table = useReactTable({
         data,
         columns,
@@ -168,6 +172,7 @@ const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const { rows } = table.getRowModel();
+    const [ focused, setFocused ] = useState(0);
 
     const estimateSize = useCallback(
         (index: number) => {
@@ -187,6 +192,14 @@ const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
         overscan: 10,
     });
     const { virtualItems: virtualRows, totalSize } = rowVirtualizer;
+
+    useEffect(() => {
+        if (hotIndex !== -1 && focused !== hotIndex) {
+            rowVirtualizer.scrollToIndex(hotIndex, {align: "center"});
+            setFocused(hotIndex);
+        }
+    }, [hotIndex, focused, setFocused])
+
 
     let paddingTop: JSX.Element | null = null;
     let paddingBottom: JSX.Element | null = null;
@@ -226,7 +239,7 @@ const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
                     style={{
                         position: "sticky",
                         top: 0,
-                        background: "lightgray",
+                        background: "white",
                     }}
                 >
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -251,12 +264,17 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
     const numInstructions = instructions.length;
     const annotations = getAnnotations(instructions);
 
+    let hotIndex = -1;
+
     const data = useMemo<DisplayedInstruction[]>(() => {
         let address = 0;
         const data: DisplayedInstruction[] = [];
 
         for (let i = 0; i < numInstructions; i++) {
             const active = programCounter * 8 === address;
+            if (active) {
+                hotIndex = i;
+            }
             let inst = "";
             for (let j = 0; j < instructions[i].machineCode.byteLength; j++) {
                 if (j === 8) {
@@ -314,7 +332,7 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
                     Runs on <strong>{annotations.entryPoint}</strong>:
                 </Typography>
             )}
-            <ProgramTable columns={columns} data={data} />
+            <ProgramTable columns={columns} data={data} hotIndex={hotIndex} />
         </Box>
     );
 };

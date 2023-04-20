@@ -68,7 +68,6 @@ const Memory: FC<MemoryProps> = (props) => {
         }
         setHotByte(newHotByte);
         if (hexEditor.current !== null && autofocus) {
-            console.log(`Scrolling to byte ${newHotByte}`);
             hexEditor.current.scrollToByte(newHotByte);
             if (newHotAddress.size !== 0) {
                 hexEditor.current.setSelectionRange(newHotByte, newHotByte + newHotAddress.size);
