@@ -14,7 +14,16 @@
  * limitations under the License.
  */
 import { FunctionComponent as FC, useCallback, useMemo, useRef } from "react";
-import { Box, Typography } from "@mui/material";
+import {
+    Table,
+    TableContainer,
+    TableHead,
+    TableBody,
+    TableRow,
+    TableCell,
+    Box,
+    Typography,
+} from "@mui/material";
 import {
     ColumnDef,
     flexRender,
@@ -33,6 +42,22 @@ const codeStyle = {
 
 const programCounterStyle = {
     ...codeStyle,
+    textAlign: "right",
+    color: "lightgray",
+};
+
+const programCounterActiveStyle = {
+    ...programCounterStyle,
+    color: "black",
+};
+
+const headerStyle = {
+    padding: "2px",
+};
+
+const headerProgramCounterStyle = {
+    ...headerStyle,
+    px: 1.6,
     textAlign: "right",
 };
 
@@ -81,50 +106,57 @@ interface ProgramTableProps {
 }
 
 const renderHeader = (header: Header<DisplayedInstruction, unknown>) => {
+    const style =
+        header.id === "programCounter"
+            ? headerProgramCounterStyle
+            : headerStyle;
     return (
-        <th
-            key={header.id}
-            colSpan={header.colSpan}
-            style={{ width: header.getSize() }}
-        >
-            {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-            )}
-        </th>
+        <TableCell key={header.id} colSpan={header.colSpan} sx={style}>
+            {flexRender(header.column.columnDef.header, header.getContext())}
+        </TableCell>
     );
 };
 
-const renderRow = (row: Row<DisplayedInstruction>) => {
-    const { programCounter, source, inst } = row.original;
+const renderRow = (
+    row: Row<DisplayedInstruction>,
+    virtualKey: number | string
+) => {
+    const { active, programCounter, source, inst } = row.original;
+    const pcStyle = active ? programCounterActiveStyle : programCounterStyle;
 
     return (
-        <tr key={row.id}>
-            <td>
-                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
-                    <Typography component="pre" sx={programCounterStyle}>
+        <TableRow key={virtualKey} selected={active}>
+            <TableCell style={{ padding: 2, verticalAlign: "top" }}>
+                <Box sx={{ py: 0, px: 1.5 }}>
+                    <Typography component="pre" sx={pcStyle}>
                         {programCounter}
                     </Typography>
                 </Box>
-            </td>
-            <td>
-                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
+            </TableCell>
+            <TableCell style={{ padding: 2, verticalAlign: "top" }}>
+                <Box sx={{ py: 0, px: 0.5 }}>
                     <Typography component="pre" sx={codeStyle}>
                         {source}
                     </Typography>
                 </Box>
-            </td>
-            <td>
-                <Box sx={{ py: 0, px: 0.5, verticalAlign: "bottom" }}>
+            </TableCell>
+            <TableCell style={{ padding: 2, verticalAlign: "top" }}>
+                <Box sx={{ py: 0, px: 0.5 }}>
                     <Typography component="pre" sx={codeStyle}>
                         {inst}
                     </Typography>
                 </Box>
-            </td>
-        </tr>
+            </TableCell>
+        </TableRow>
     );
 };
 
+const countLines = (s: string) => {
+    return 1 + (s.match(/\n/g) || []).length;
+};
+
+const LINE_HEIGHT_ESTIMATE = 24; //pixels
+const BOX_PADDING_ESTIMATE = 7; //pixels
 
 const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
     const table = useReactTable({
@@ -136,9 +168,21 @@ const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const { rows } = table.getRowModel();
+
+    const estimateSize = useCallback(
+        (index: number) => {
+            const { source, inst } = rows[index].original;
+            const sourceLines = countLines(source);
+            const instLines = countLines(inst);
+            const maxLines = sourceLines > instLines ? sourceLines : instLines;
+            return maxLines * LINE_HEIGHT_ESTIMATE + BOX_PADDING_ESTIMATE;
+        },
+        [rows]
+    );
+
     const rowVirtualizer = useVirtual({
         parentRef: tableContainerRef,
-        estimateSize: useCallback((index: number) => 24, []),
+        estimateSize,
         size: data.length,
         overscan: 10,
     });
@@ -150,49 +194,60 @@ const ProgramTable: FC<ProgramTableProps> = ({ columns, data }) => {
         const firstRow = virtualRows[0];
         const lastRow = virtualRows[virtualRows.length - 1];
         if (firstRow.start && firstRow.start > 0) {
-            paddingTop = (<tr>
-                <td style={{ height: `${firstRow.start}px`}} />
-            </tr>);
+            paddingTop = (
+                <tr>
+                    <td style={{ height: `${firstRow.start}px` }} />
+                </tr>
+            );
         }
         if (lastRow.end && lastRow.end > 0) {
-            paddingBottom = (<tr>
-                <td style={{ height: `${totalSize} - ${lastRow.end}px`}} />
-            </tr>);
+            paddingBottom = (
+                <tr>
+                    <td style={{ height: `${totalSize} - ${lastRow.end}px` }} />
+                </tr>
+            );
         }
     }
     if (paddingTop || paddingBottom) {
     }
-    
+
     const renderVirtualRow = (virtualRow: VirtualItem) => {
         const row = rows[virtualRow.index] as Row<DisplayedInstruction>;
-        return renderRow(row);
+        return renderRow(row, virtualRow.key);
     };
 
     return (
-        <div className="p-2">
-            <div className="h-2" />
-            <div ref={tableContainerRef} style={{height: 500, overflow: "auto" }}className="container">
-                <table>
-                    <thead style={{ position: "sticky", top: 0, background: "lightgray"}}>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(renderHeader)}
-                            </tr>
-                        ))}
-                    </thead>
-                    <tbody>
-                        {paddingTop}
-                        {virtualRows.map(renderVirtualRow)}
-                        {paddingBottom}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <TableContainer
+            ref={tableContainerRef}
+            style={{ height: 300, overflow: "auto" }}
+        >
+            <Table>
+                <TableHead
+                    style={{
+                        position: "sticky",
+                        top: 0,
+                        background: "lightgray",
+                    }}
+                >
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <tr key={headerGroup.id}>
+                            {headerGroup.headers.map(renderHeader)}
+                        </tr>
+                    ))}
+                </TableHead>
+                <TableBody>
+                    {paddingTop}
+                    {virtualRows.map(renderVirtualRow)}
+                    {paddingBottom}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 };
 
 export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
     const instructions = props.program.instructions;
+    const programCounter = props.programCounter;
     const numInstructions = instructions.length;
     const annotations = getAnnotations(instructions);
 
@@ -201,7 +256,7 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
         const data: DisplayedInstruction[] = [];
 
         for (let i = 0; i < numInstructions; i++) {
-            const active = props.programCounter * 8 === address;
+            const active = programCounter * 8 === address;
             let inst = "";
             for (let j = 0; j < instructions[i].machineCode.byteLength; j++) {
                 if (j === 8) {
@@ -218,10 +273,8 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
                 source = source.split("\n").slice(1).join("\n");
             }
 
-            const programCounter = address / 8;
-
             data.push({
-                programCounter,
+                programCounter: (address / 8),
                 address,
                 source,
                 inst,
@@ -231,7 +284,7 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
             address += instructions[i].machineCode.byteLength;
         }
         return data;
-    }, [instructions, numInstructions, annotations]);
+    }, [instructions, numInstructions, annotations, programCounter]);
 
     const columns = useMemo<ColumnDef<DisplayedInstruction>[]>(
         () => [
@@ -256,9 +309,11 @@ export const WindowedProgram: FC<WindowedProgramProps> = (props) => {
 
     return (
         <Box>
-            { annotations.entryPoint &&
-                <Typography variant="subtitle1">Runs on <strong>{annotations.entryPoint}</strong>:</Typography>
-            }
+            {annotations.entryPoint && (
+                <Typography variant="subtitle1">
+                    Runs on <strong>{annotations.entryPoint}</strong>:
+                </Typography>
+            )}
             <ProgramTable columns={columns} data={data} />
         </Box>
     );
