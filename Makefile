@@ -17,7 +17,7 @@ src/generated/vm/consts/%.ts: src/vm/consts/%.bin
 
 src/generated/vm/consts.ts: $(BINCONSTS_GENERATED)
 	mkdir -p src/generated/vm
-	npm exec node tools/generateConsts.js $^
+	yarn exec node tools/generateConsts.js $^
 
 public/ubpf.wasm: build_vm/ubpf.wasm
 	cp build_vm/ubpf.wasm public/ubpf.wasm
@@ -36,13 +36,13 @@ build_vm/ubpf.wasm: $(UBPF_DEPS) emsdk/upstream/emscripten/emcc
 	sed -i '1 i\ /* eslint-disable */' build_vm/ubpf.js
 
 src/generated/ebpf-assembler.js: src/vm/parser/ebpf.jison
-	npm exec node tools/generateParser.js
+	yarn exec node tools/generateParser.js
 
 start: $(GENERATED)
-	npm start
+	yarn start
 
 build: $(GENERATED)
-	npm run build
+	yarn run build
 
 emsdk/upstream/emscripten/emcc:
 	mkdir -p emsdk
