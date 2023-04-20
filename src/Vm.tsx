@@ -33,7 +33,7 @@ import StepController from './StepController';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import Output from './Output';
-import { BIG_MAX_32, FORKTOP_SOURCE } from './vm/consts';
+import { BIG_MAX_32, HELLOWORLD_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
 import { CreateSchedCloneEntrypoint } from './vm/entrypoint';
 import callbacks from './vm/calls';
@@ -191,7 +191,7 @@ const Vm: FC<VmProps> = (props) => {
     }, [setProgram, vmState, setHotAddress]);
 
     if (program === null) {
-        const assembled = assemble(FORKTOP_SOURCE.split('\n'), {});
+        const assembled = assemble(HELLOWORLD_SOURCE.split('\n'), {});
         loadNewProgram(assembled);
     }
 
