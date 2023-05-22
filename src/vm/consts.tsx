@@ -28,17 +28,17 @@ export const HELLOWORLD_HEXBYTECODE =
 // symbol resolution works.
 export const HELLOWORLD_SOURCE = `\
 // entryPoint: kprobe__sys_clone
-mov r1, 663916
+mov r1, 0xa216c
 stxw [r10-8], r1
-lddw r1, 7809632219628990316
+lddw r1, 0x6C616320656E6F6C
 stxdw [r10-16], r1
-lddw r1, 7160568898002116896
+lddw r1, 0x635F737973206120
 stxdw [r10-24], r1
-lddw r1, 7235424366176003442
+lddw r1, 0x6469642049206572
 stxdw [r10-32], r1
-lddw r1, 7298118523944727151
+lddw r1, 0x65482021646C726F
 stxdw [r10-40], r1
-lddw r1, 6278066737626506568
+lddw r1, 0x57202C6F6C6C6548
 stxdw [r10-48], r1
 mov r1, r10
 add r1, -48
