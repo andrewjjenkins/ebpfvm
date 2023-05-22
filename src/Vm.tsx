@@ -20,7 +20,7 @@ import {
     useCallback,
     useRef,
 } from 'react';
-import Box from '@mui/material/Box';
+import { Box, Typography, Grid, Paper } from '@mui/material';
 import { 
     newVm,
     NewVmOptions,
@@ -30,15 +30,15 @@ import Memory, { HotAddressInfo } from './Memory';
 import Program from './Program';
 import CpuState from './CpuState';
 import StepController from './StepController';
-import Paper from '@mui/material/Paper';
-import { Typography } from '@mui/material';
 import Output from './Output';
 import { BIG_MAX_32, HELLOWORLD_SOURCE } from './vm/consts';
 import { AssembledProgram, assemble } from './vm/program';
 import { CreateSchedCloneEntrypoint } from './vm/entrypoint';
 import callbacks from './vm/calls';
 
-interface VmInitializerProps {}
+interface VmInitializerProps {
+    largeColumnWidth?: number;
+}
 
 const VmInitializer: FC<VmInitializerProps> = (props) =>{
     const [printkLines, setPrintkLines] = useState<string[]>([]);
@@ -78,6 +78,7 @@ const VmInitializer: FC<VmInitializerProps> = (props) =>{
         vmState={vmState}
         printkLines={printkLines}
         setPrintkLines={setPrintkLines}
+        largeColumnWidth={props.largeColumnWidth}
         />
     );
 };
@@ -86,6 +87,7 @@ interface VmProps {
     vmState: VmState;
     printkLines: string[];
     setPrintkLines: (lines: string[]) => void;
+    largeColumnWidth?: number;
 }
 
 // from https://stackoverflow.com/questions/53024496/state-not-updating-when-using-react-state-hook-within-setinterval/59274004#59274004
@@ -242,39 +244,44 @@ const Vm: FC<VmProps> = (props) => {
     const pc = vmState.cpu.programCounter[0];
     const currentInstruction = vmState.program.getInstructionAtProgramCounter(pc);
 
+    const lgWidth = props.largeColumnWidth || 12;
+
     return (
-        <Box>
-        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
-            <Memory
-                title="Stack"
-                memory={vmState.memory.stack}
-                numWordsToShow={16}
-                startingAddress={vmState.memory.stack.byteOffset}
-                hotAddress={hotAddress}
-                timeStep={timeStep}
-                onSetValue={onSetStackValue}
-            />
-        </Paper>
-        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
-            <Memory
-                title="Heap"
-                memory={vmState.memory.heap}
-                numWordsToShow={16}
-                startingAddress={vmState.memory.heap.byteOffset}
-                hotAddress={hotAddress}
-                timeStep={timeStep}
-                onSetValue={onSetHeapValue}
-            />
-        </Paper>
-        <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
-            { program !== null &&
-            <Program 
-                programCounter={pc}
-                program={program}
-                loadNewProgram={loadNewProgram}
-            />
-            }
-        </Paper>
+        <Grid container spacing={2}>
+        <Grid item xs={12} lg={lgWidth}>
+            <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+                <Memory
+                    title="Stack"
+                    memory={vmState.memory.stack}
+                    numWordsToShow={16}
+                    startingAddress={vmState.memory.stack.byteOffset}
+                    hotAddress={hotAddress}
+                    timeStep={timeStep}
+                    onSetValue={onSetStackValue}
+                />
+            </Paper>
+            <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+                <Memory
+                    title="Heap"
+                    memory={vmState.memory.heap}
+                    numWordsToShow={16}
+                    startingAddress={vmState.memory.heap.byteOffset}
+                    hotAddress={hotAddress}
+                    timeStep={timeStep}
+                    onSetValue={onSetHeapValue}
+                />
+            </Paper>
+            <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
+                { program !== null &&
+                <Program 
+                    programCounter={pc}
+                    program={program}
+                    loadNewProgram={loadNewProgram}
+                />
+                }
+            </Paper>
+        </Grid> 
+        <Grid item xs={12} lg={lgWidth}>
         <Paper sx={{ maxWidth: 936, margin: 'auto', marginBottom: 2, padding: 2, overflow: 'hidden' }}>
             <CpuState 
                 instruction={currentInstruction}
@@ -298,7 +305,8 @@ const Vm: FC<VmProps> = (props) => {
                 lastError={vmError}
             />
         </Paper>
-        </Box>
+        </Grid>
+        </Grid>
     );
 };
 

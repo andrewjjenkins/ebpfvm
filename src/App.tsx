@@ -13,16 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
+import React, { useCallback, FunctionComponent as FC } from 'react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import Header from './Header';
-import Content from './Content';
+import Vm from './Vm';
 
-function Copyright() {
+interface CopyrightProps {
+  onWideMode: () => void;
+}
+
+const Copyright: FC<CopyrightProps> = (props) => {
+  const onWideModeClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    props.onWideMode();
+  };
+
   return (
     <Typography variant="body2" color="text.secondary" align="center">
       {'© '}
@@ -30,6 +39,8 @@ function Copyright() {
         Andrew Jenkins
       </Link>{' 2022 (Apache 2.0) | '}
       <Link color="inherit" href="https://github.com/andrewjjenkins/ebpfvm" target="_blank">source</Link>
+      {' | '}
+      <Link href="#" onClick={onWideModeClick}>Wide Mode</Link>
     </Typography>
   );
 }
@@ -188,10 +199,19 @@ theme = {
 
 function App() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [largeColumnWidth, setLargeColumnWidth] = React.useState(12);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  const onWideMode = useCallback(() => {
+    if (largeColumnWidth === 12) {
+      setLargeColumnWidth(6);
+    } else {
+      setLargeColumnWidth(12);
+    }
+  }, [largeColumnWidth, setLargeColumnWidth]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -200,10 +220,10 @@ function App() {
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Header onDrawerToggle={handleDrawerToggle} />
           <Box component="main" sx={{ flex: 1, py: 6, px: 4, bgcolor: '#eaeff1' }}>
-            <Content />
+            <Vm largeColumnWidth={largeColumnWidth}/>
           </Box>
           <Box component="footer" sx={{ p: 2, bgcolor: '#eaeff1' }}>
-            <Copyright />
+            <Copyright onWideMode={onWideMode} />
           </Box>
         </Box>
       </Box>
